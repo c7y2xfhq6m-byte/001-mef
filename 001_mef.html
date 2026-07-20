@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>MEF | 市町村評価共通フレームワーク</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+:root{
+  --white:#FFFFFF; --ink:#333333; --red:#E60012; --orange:#EF8200;
+  --orange-light:#FDF0E0; --grey:#888888; --grey-light:#D9D9D9; --bg:#FFFFFF;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;
+     color:var(--ink); background:var(--bg); font-size:14px; line-height:1.6;}
+header{border-bottom:3px solid var(--ink); padding:14px 20px 10px; display:flex; flex-wrap:wrap; align-items:baseline; gap:10px;}
+.brand{font-size:26px; font-weight:800; letter-spacing:.06em;}
+.brand-sub{font-size:12px; color:var(--grey);}
+.badge{font-size:11px; border:1px solid var(--ink); padding:1px 8px; border-radius:2px;}
+.auth-area{margin-left:auto; font-size:12px; color:var(--grey);}
+nav{display:flex; flex-wrap:wrap; border-bottom:1px solid var(--grey-light); padding:0 12px; background:var(--white); position:sticky; top:0; z-index:5;}
+nav button{appearance:none; border:none; background:none; font:inherit; font-size:13px; padding:10px 14px; cursor:pointer; color:var(--grey); border-bottom:3px solid transparent;}
+nav button.active{color:var(--ink); font-weight:700; border-bottom-color:var(--red);}
+main{max-width:1180px; margin:0 auto; padding:18px 16px 60px;}
+h2{font-size:17px; margin:20px 0 8px; padding-left:10px; border-left:5px solid var(--ink);}
+h3{font-size:14px; margin:16px 0 6px; color:var(--ink);}
+p.lead{font-size:12px; color:var(--grey); margin-bottom:10px;}
+table{border-collapse:collapse; width:100%; margin:8px 0 4px; font-size:13px;}
+th,td{border:1px solid var(--grey-light); padding:5px 8px; text-align:right; vertical-align:top;}
+th{background:#F5F5F5; font-weight:700; text-align:center;}
+td.l, th.l{text-align:left;}
+.city-head{font-weight:700;}
+.chip{display:inline-block; font-size:11px; padding:0 6px; border-radius:2px; margin-left:6px; white-space:nowrap; border:1px solid var(--grey-light);}
+.chip.s2 {background:var(--ink); color:var(--white); border-color:var(--ink);}
+.chip.s1 {background:var(--grey-light); color:var(--ink);}
+.chip.s0 {background:var(--white); color:var(--grey);}
+.chip.sm1{background:var(--orange-light); color:var(--ink); border-color:var(--orange);}
+.chip.sm2{background:var(--orange); color:var(--white); border-color:var(--orange);}
+.chip.na {background:var(--white); color:var(--grey); border-style:dashed;}
+.chip.ref{background:var(--white); color:var(--grey);}
+.dev{font-size:11px; color:var(--grey); display:block;}
+.note-box{border:1px solid var(--grey-light); border-left:4px solid var(--orange); background:#FDFBF8; padding:10px 12px; font-size:12px; margin:10px 0;}
+.note-box.plain{border-left-color:var(--grey);}
+.flag{display:inline-block; font-size:11px; color:var(--white); background:var(--grey); padding:0 6px; border-radius:2px; margin-right:4px;}
+.suff{display:flex; gap:14px; flex-wrap:wrap; margin:8px 0;}
+.suff .card{border:1px solid var(--grey-light); padding:8px 12px; min-width:200px; font-size:12px;}
+.suff .bar{height:6px; background:var(--grey-light); border-radius:3px; overflow:hidden; margin:4px 0;}
+.suff .bar>span{display:block; height:100%; background:var(--ink);}
+.suff .miss{color:var(--grey); font-size:11px;}
+.legend{font-size:11px; color:var(--grey); margin:6px 0 14px;}
+.btn{appearance:none; font:inherit; font-size:13px; padding:7px 16px; border:1px solid var(--ink); background:var(--white); color:var(--ink); cursor:pointer; border-radius:2px;}
+.btn.primary{background:var(--red); border-color:var(--red); color:var(--white);}
+.btn:disabled{opacity:.45; cursor:default;}
+input[type=email],input[type=password],select{font:inherit; font-size:13px; padding:6px 8px; border:1px solid var(--grey-light); border-radius:2px;}
+.diag-item{border:1px solid var(--grey-light); padding:10px 12px; margin:8px 0; font-size:13px;}
+.diag-item .res{margin-top:6px; font-size:12px; white-space:pre-wrap;}
+.res.pass{color:var(--ink); font-weight:700;}
+.res.fail{color:var(--red); font-weight:700;}
+.res.warn{color:var(--orange); font-weight:700;}
+footer{max-width:1180px; margin:0 auto; padding:14px 16px 40px; font-size:11px; color:var(--grey); border-top:1px solid var(--grey-light);}
+.tab-pane{display:none;} .tab-pane.show{display:block;}
+.sr{font-size:11px; color:var(--grey);}
+@media (max-width:700px){ th,td{padding:4px 5px; font-size:12px;} .brand{font-size:22px;} }
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">MEF</span>
+  <span class="brand-sub">市町村評価共通フレームワーク｜包括委託・コンセッション 提案類型分類</span>
+  <span class="badge">基準:令和5年度決算</span>
+  <span class="auth-area" id="authStatus">未ログイン(閲覧はどなたでも可・入力機能はログイン後)</span>
+</header>
+<nav id="nav">
+  <button data-tab="gen" class="active">① 一般会計</button>
+  <button data-tab="water">② 水道</button>
+  <button data-tab="sewer">② 下水道</button>
+  <button data-tab="ts">時系列 R1–R5</button>
+  <button data-tab="notes">注記・出典</button>
+  <button data-tab="diag">診断・ログイン</button>
+</nav>
+<main>
+  <div id="loading">静的データを読み込んでいます…</div>
+
+  <section id="pane-gen" class="tab-pane"></section>
+  <section id="pane-water" class="tab-pane"></section>
+  <section id="pane-sewer" class="tab-pane"></section>
+  <section id="pane-ts" class="tab-pane"></section>
+  <section id="pane-notes" class="tab-pane"></section>
+  <section id="pane-diag" class="tab-pane"></section>
+</main>
+<footer>
+  本ツールのスコアは「類似団体平均比の乖離率方式(±5%・±15%で5段階)」による分類の論理妥当性の検証装置であり、意思決定の代替ではありません(指標定義書1章・8章)。
+  ①の類型平均は5県237団体による暫定値です。サウンディングの受容性・競合動向・個別の人的関係は本ツールの評価対象外です。
+</footer>
+
+<script>
+"use strict";
+/* ============================================================
+   MEF 001_mef.html  マイルストーン(1): 静的①②ダッシュボード+診断
+   設計正本: 指標定義書v1.2 / 引き継ぎ指示 / 開発環境引き継ぎ書
+   ============================================================ */
+
+const CITIES = [
+  {key:"kosai",       name:"湖西市",   pref:"静岡県", genGroup:"Ⅱ-2", genAvgKey:"avg_II2"},
+  {key:"nakatsugawa", name:"中津川市", pref:"岐阜県", genGroup:"Ⅱ-2", genAvgKey:"avg_II2"},
+  {key:"kuwana",      name:"桑名市",   pref:"三重県", genGroup:"Ⅲ-2", genAvgKey:"avg_III2"}
+];
+
+let D = null;          // 静的データ
+let sb = null;         // Supabase クライアント(ログイン用・セッション保持)
+let session = null;
+
+/* ---------- スコア計算(定義書3.3: 乖離率方式) ---------- */
+const T1 = 5, T2 = 15; // ±5% / ±15% (デフォルト。感度分析対象=段階(3)で可変化)
+function devRate(v, avg){
+  if (v===null || v===undefined || avg===null || avg===undefined) return null;
+  if (avg === 0) return null; // 平均0は乖離率定義不能
+  return (v - avg) / Math.abs(avg);
+}
+// higherIsBetter: 値が大きいほど良好(受入能力+)ならtrue
+function score5(v, avg, higherIsBetter){
+  const d = devRate(v, avg);
+  if (d===null) return {s:null, d:null};
+  const a = higherIsBetter ? d : -d;
+  const pct = a*100;
+  let s = 0;
+  if (pct >  T2) s = 2; else if (pct >  T1) s = 1;
+  else if (pct < -T2) s = -2; else if (pct < -T1) s = -1;
+  return {s, d};
+}
+function chip(sc, opts){
+  opts = opts||{};
+  if (opts.na) return '<span class="chip na">'+(opts.naLabel||'該当なし')+'</span>';
+  if (opts.ref) return '<span class="chip ref">参考</span>';
+  if (sc===null || sc===undefined || sc.s===null) return '<span class="chip na">判定不能</span>';
+  const map = {"2":["s2","+2 優位"],"1":["s1","+1"],"0":["s0","0 平均並み"],"-1":["sm1","−1"],"-2":["sm2","−2 要注意"]};
+  const m = map[String(sc.s)];
+  const dev = (sc.d===null)?'':'<span class="dev">乖離 '+(sc.d>=0?'+':'')+(sc.d*100).toFixed(1)+'%</span>';
+  return '<span class="chip '+m[0]+'">'+m[1]+'</span>'+dev;
+}
+function fmt(v, digits){
+  if (v===null||v===undefined) return '−';
+  return Number(v).toLocaleString('ja-JP',{maximumFractionDigits:(digits===undefined?2:digits)});
+}
+
+/* ---------- ① 一般会計 ---------- */
+// 定義書4章: 指標→{dir:'high'|'low'|'urgency'|'ref'|'info'}
+const GEN_DEF = {
+  "財政力指数":{dir:"high"}, "経常収支比率":{dir:"low"}, "実質公債費比率":{dir:"low"},
+  "将来負担比率":{dir:"low", special:"fw"}, "地方交付税依存度":{dir:"low"},
+  "地方税(人口1人当たり)":{dir:"high"}, "地方債現在高(同上)":{dir:"low"},
+  "国勢調査人口増減率(H27→R2)":{dir:"urgency"},
+  "職員数(人口千人当たり)":{dir:"ref"},
+  "住民基本台帳人口(R6.1.1)":{dir:"info"},
+  "将来推計人口指数(2050/2020)":{dir:"missing"}
+};
+function renderGen(){
+  const el = document.getElementById('pane-gen');
+  let h = '<h2>① 一般会計(令和5年度決算)</h2>';
+  h += '<p class="lead">比較基準:5県(岐阜・静岡・愛知・三重・長野)237団体の同一市町村類型平均(暫定。将来「類似団体別市町村財政指数表」の正式平均に差替予定)。湖西・中津川=Ⅱ-2平均(n=34)、桑名=Ⅲ-2平均(n=17)。</p>';
+  h += suffCards('gen');
+  h += '<table><tr><th class="l">指標</th><th>単位</th>';
+  CITIES.forEach(c=>{ h += '<th class="city-head">'+c.name+'<br><span class="sr">'+c.genGroup+'</span></th>'; });
+  h += '<th>Ⅱ-2平均</th><th>Ⅲ-2平均</th></tr>';
+  let fwNote = false;
+  D.gen_account.forEach(r=>{
+    const def = GEN_DEF[r.indicator] || {dir:"ref"};
+    h += '<tr><td class="l">'+r.indicator+(def.dir==="ref"?' <span class="sr">(参考指標)</span>':'')
+       + (def.dir==="urgency"?' <span class="sr">(切迫度側)</span>':'')+'</td><td>'+(r.unit||'')+'</td>';
+    CITIES.forEach(c=>{
+      const raw = r[c.key];
+      const avg = r[c.genAvgKey];
+      let cell = '';
+      if (def.dir==="missing"){ cell = '<span class="chip na">欠測(社人研から取得予定)</span>'; }
+      else if (def.special==="fw" && (raw===null || typeof raw === 'string')){
+        // 将来負担比率「算定なし」: 最良(+2)扱い+注記(本スレッド確定事項)
+        cell = fmt(null)+' <span class="chip s2">+2 算定なし※</span><span class="dev">比率算定対象外</span>';
+        fwNote = true;
+      }
+      else if (typeof raw === 'string'){ cell = raw; }
+      else if (def.dir==="info"){ cell = fmt(raw,0); }
+      else if (def.dir==="ref"){ cell = fmt(raw)+' <span class="chip ref">参考</span>'; }
+      else if (def.dir==="urgency"){
+        // 人口増減率: マイナス値基準のため乖離率は|平均|基準・減少が大きいほど切迫
+        const d = devRate(raw, avg);
+        let lbl = '<span class="chip na">判定不能</span>';
+        if (d!==null){
+          const pct = -d*100; // 平均より減少が大きい(値が小さい)ほど正
+          let s=0; if(pct>T2)s=2; else if(pct>T1)s=1; else if(pct<-T2)s=-2; else if(pct<-T1)s=-1;
+          const m={"2":["sm2","切迫 大"],"1":["sm1","切迫 やや大"],"0":["s0","平均並み"],"-1":["s1","緩やか"],"-2":["s2","緩やか+"]}[String(s)];
+          lbl = '<span class="chip '+m[0]+'">'+m[1]+'</span><span class="dev">平均比 '+(d>=0?'+':'')+(d*100).toFixed(1)+'%</span>';
+        }
+        cell = fmt(raw)+' '+lbl;
+      }
+      else {
+        cell = fmt(raw)+' '+chip(score5(raw, avg, def.dir==="high"));
+      }
+      h += '<td>'+cell+'</td>';
+    });
+    h += '<td>'+ (typeof r.avg_II2==='number'?fmt(r.avg_II2):'−') +'</td><td>'+ (typeof r.avg_III2==='number'?fmt(r.avg_III2):'−') +'</td></tr>';
+  });
+  h += '</table>';
+  h += legend();
+  if (fwNote){
+    h += '<div class="note-box"><b>※将来負担比率「算定なし」の扱い(丁寧な補記):</b> '
+      +'中津川市の将来負担比率は「−(算定なし)」です。これは欠測ではなく、将来負担額が充当可能財源等を下回るため制度上比率を算定しない状態を指し、財政健全性としては良好側のシグナルです。本ツールではスコア+2(最良)として扱い、データ充足率には「入力済み」として算入します。'
+      +'ただし厳密には「比率が基準未満で小さい」こと以上の情報(実際の余裕幅)は持たないため、断定的な優劣比較には用いず、この注記を常に併読してください。なお5県237団体では149団体が算定なしであり、算定なし自体は珍しい状態ではありません。</div>';
+  }
+  h += '<div class="note-box plain"><b>注記:</b> '+(D.meta.gen_baseline_note||'')+'</div>';
+  el.innerHTML = h;
+}
+
+/* ---------- ② 水道 ---------- */
+// 定義書5.1: スコア対象と評価方向。avg3=3か年平均採用
+const WATER_DEF = {
+  "①経常収支比率":{scored:true, dir:"high"},
+  "②累積欠損金比率":{scored:false},
+  "③流動比率":{scored:false},
+  "④企業債残高対給水収益比率":{scored:true, dir:"low"},
+  "⑤料金回収率":{scored:true, dir:"high", avg3:"料金回収率（R3-R5平均）"},
+  "⑥給水原価":{scored:false},
+  "⑦施設利用率":{scored:false},
+  "⑧有収率":{scored:true, dir:"high", sflag:true},
+  "①有形固定資産減価償却率":{scored:true, dir:"low"},
+  "②管路経年化率":{scored:true, dir:"low"},
+  "③管路更新率":{scored:true, dir:"high", avg3:"管路更新率（R3-R5平均）"}
+};
+function renderWater(){
+  const el = document.getElementById('pane-water');
+  let h = '<h2>② 水道事業(末端給水・令和5年度決算)</h2>';
+  h += '<p class="lead">比較基準:経営比較分析表の類似団体平均(湖西A4/中津川A4/桑名A3)。料金回収率・管路更新率はR3-R5の3か年平均でスコア判定(定義書3.3。比較対象の類似平均はR5単年値のため近似)。スコア対象外の指標は「参考」表示。</p>';
+  h += suffCards('water');
+  h += '<table><tr><th class="l">指標</th><th>単位</th>';
+  CITIES.forEach(c=>{ h+='<th class="city-head">'+c.name+'</th>'; });
+  h += '</tr>';
+  D.water.rows.forEach(r=>{
+    const def = WATER_DEF[r.indicator]||{scored:false};
+    h += '<tr><td class="l">'+r.indicator+(def.avg3?' <span class="sr">※3か年平均で判定</span>':'')+'</td><td>'+(r.unit||'')+'</td>';
+    CITIES.forEach(c=>{
+      const cell = r[c.key];
+      let v = cell.value, avg = cell.peer_avg, disp;
+      if (def.avg3 && D.water.avg3y[def.avg3]){
+        const v3 = D.water.avg3y[def.avg3][c.key];
+        disp = fmt(v)+' <span class="sr">/3y '+fmt(v3)+'</span> '+(def.scored?chip(score5(v3,avg,def.dir==="high")):'<span class="chip ref">参考</span>');
+      } else {
+        disp = fmt(v)+' '+(def.scored?chip(score5(v,avg,def.dir==="high")):'<span class="chip ref">参考</span>');
+      }
+      h += '<td>'+disp+'<span class="dev">類似平均 '+fmt(avg)+'</span></td>';
+    });
+    h += '</tr>';
+  });
+  h += '</table>'+legend();
+  h += '<h3>構造フラグ(スコアと分離・注記表示/定義書3.4)</h3>';
+  h += '<div class="note-box plain">'
+    +'<span class="flag">簡易水道統合</span>中津川市:H29に旧簡易水道23事業等を統合。山間部小規模系統の包含により有収率・給水原価が構造的に悪化(給水人口密度296人/km²。湖西1,008・桑名1,010)。<br>'
+    +'<span class="flag">老朽化起因</span>桑名市:人口密度は高いが管路経年化率36.09%(類似平均24.49%)・有収率80.01%。老朽化起因の漏水が示唆され、構造要因ではなく更新需要のシグナル。<br>'
+    +'<span class="flag">繰入嵩上げ</span>中津川市水道の経常収支比率は基準外繰入による嵩上げに注意(R6は105.15%だが基準外繰入増加による。繰出金の基準内外データは取得予定)。</div>';
+  el.innerHTML = h;
+}
+
+/* ---------- ② 下水道 ---------- */
+const SEWER_DEF = {
+  "①経常収支比率":{scored:true, dir:"high"},
+  "②累積欠損金比率":{scored:false},
+  "③流動比率":{scored:false},
+  "④企業債残高対事業規模比率":{scored:true, dir:"low"},
+  "⑤経費回収率":{scored:true, dir:"high", avg3:true},
+  "⑥汚水処理原価":{scored:false},
+  "⑦施設利用率":{scored:false},
+  "⑧水洗化率":{scored:false},
+  "①有形固定資産減価償却率":{scored:true, dir:"low"},
+  "②管渠老朽化率":{scored:true, dir:"low", zeroCaveat:true},
+  "③管渠改善率":{scored:true, dir:"high", zeroCaveat:true}
+};
+const TS_BIZ = {"公共下水道":"公共下水道","特定環境保全公共下水道":"特環","農業集落排水":"農集排","個別排水処理":"個別排水"};
+function ts3y(cityName, business, indicatorHead){
+  const hit = D.timeseries.find(t=>t.city===cityName && t.business===business && t.indicator.indexOf(indicatorHead)===0);
+  return hit ? hit.avg_R3R5 : null;
+}
+function renderSewer(){
+  const el = document.getElementById('pane-sewer');
+  let h = '<h2>② 下水道事業(令和5年度決算)</h2>';
+  h += '<p class="lead">事業別に類似団体平均と比較(公共:湖西Cc2/中津川Cd1/桑名Ad、特環:D2、農集排:F1、個別:L2)。経費回収率はR3-R5の3か年平均で判定。桑名市農集排はR5欠測(R6.3.31法適用化)。</p>';
+  h += suffCards('sewer');
+  D.sewer.blocks.forEach(block=>{
+    h += '<h3>'+block.title+'</h3>';
+    h += '<table><tr><th class="l">指標</th><th>単位</th>';
+    CITIES.forEach(c=>{ h+='<th class="city-head">'+c.name+'</th>'; });
+    h += '</tr>';
+    block.rows.forEach(r=>{
+      const def = SEWER_DEF[r.indicator]||{scored:false};
+      h += '<tr><td class="l">'+r.indicator+(def.avg3?' <span class="sr">※3か年平均で判定</span>':'')+'</td><td>'+(r.unit||'')+'</td>';
+      CITIES.forEach(c=>{
+        const cell = r[c.key];
+        if (cell.na){
+          const lbl = (c.key==='kuwana' && block.title==='農業集落排水') ? 'R5欠測(R6.3.31法適用化)' : '該当なし';
+          h += '<td>'+chip(null,{na:true,naLabel:lbl})+'</td>'; return;
+        }
+        let v = cell.value, avg = cell.peer_avg, extra='', scObj=null, refOnly=!def.scored;
+        // 湖西・下水道の企業債: 分析表0は誤報告→補正値を使用(指示書確定事項)
+        if (r.indicator==='④企業債残高対事業規模比率' && c.key==='kosai'){
+          if (block.title==='公共下水道'){
+            const fx = D.sewer.kosai_bond_correction;
+            v = fx.corrected_ratio_pct; avg = fx.peer_avg_pct;
+            extra = '<span class="dev">分析表値0→決算書ベース補正 約'+fmt(fx.corrected_ratio_pct,0)+'%を採用※</span>';
+          } else if (block.title==='特定環境保全公共下水道'){
+            h += '<td>'+chip(null,{na:true,naLabel:'公共側と一体経理(補正参照)'})+'<span class="dev">分析表値0(按分報告)</span></td>'; return;
+          }
+        }
+        if (def.avg3){
+          const v3 = ts3y(c.name, TS_BIZ[block.title], '⑤経費回収率') ?? ts3y(c.name, TS_BIZ[block.title], '経費回収率');
+          if (v3!==null){ scObj = score5(v3,avg,def.dir==="high"); extra += '<span class="sr"> /3y '+fmt(v3)+'</span>'; }
+          else scObj = score5(v,avg,def.dir==="high");
+        } else if (def.scored){
+          scObj = score5(v,avg,def.dir==="high");
+        }
+        let caveat = '';
+        if (def.zeroCaveat && v===0){ caveat='<span class="dev">値0は経過年数等のデータ未整備に起因する場合あり(③3-1と併読)</span>'; }
+        h += '<td>'+fmt(v)+extra+' '+(refOnly?'<span class="chip ref">参考</span>':chip(scObj))+'<span class="dev">類似平均 '+fmt(avg)+'</span>'+caveat+'</td>';
+      });
+      h += '</tr>';
+    });
+    h += '</table>';
+  });
+  h += legend();
+  const fx = D.sewer.kosai_bond_correction;
+  h += '<div class="note-box"><b>※湖西市下水道・企業債残高の補正(検証済):</b> '+fx.issue+'。'
+    +'企業債残高合計 '+fmt(fx.debt_total_yen/1e8,1)+'億円のうち一般会計負担見込 '+fmt(fx.debt_ga_share_yen/1e8,1)+'億円を控除した '+fmt(fx.debt_net_yen/1e8,1)+'億円を使用料収入 '+fmt(fx.sewer_fee_revenue_yen/1e8,1)+'億円で除した概算比率 約'+fmt(fx.corrected_ratio_pct,0)+'%をスコア計算に使用。'+fx.note+'</div>';
+  h += '<div class="note-box plain"><b>その他の既知の注意:</b> 中津川市公共下水道の企業債残高対事業規模比率はR3:382→R4:106→R5:315と大変動(分母の算定要因は要検証)。特環の類似団体平均(D2)は母集団が弱く、平均比で良く見える相対評価バイアスに注意。湖西市は特環を含め公共下水道事業会計として一体経理のうえ分析表上で按分報告。中津川市個別排水処理は累積欠損金比率669%だが処理区域内人口201人の極小事業。</div>';
+  el.innerHTML = h;
+}
+
+/* ---------- データ充足率(定義書3.5: 軸ごと・市ごと) ---------- */
+const SUFF_DEF = {
+  gen:  {total:9, label:"①一般会計", missing:["将来推計人口指数(社人研・取得予定)"]},
+  water:{total:9, label:"②水道",     missing:["繰出金の基準内外(決算状況調から取得予定)","技術職員数・年齢構成(取得予定)"]},
+  sewer:{total:8, label:"②下水道",   missing:["有収率(処理水量ベース・未取得)","繰出金の基準内外(取得予定)"]}
+};
+function suffCards(axis){
+  const def = SUFF_DEF[axis];
+  const have = def.total - def.missing.length;
+  const pct = Math.round(have/def.total*1000)/10;
+  const provisional = pct < 70;
+  let h = '<div class="suff"><div class="card"><b>データ充足率('+def.label+'・3市共通)</b> '
+    + pct.toFixed(1)+'%('+have+'/'+def.total+'指標)'
+    + (provisional?' <span class="chip sm2">暫定</span>':' <span class="chip s1">確定(閾値70%以上)</span>')
+    + '<div class="bar"><span style="width:'+pct+'%"></span></div>'
+    + '<div class="miss">欠測:'+def.missing.join(' / ')+'</div></div></div>';
+  return h;
+}
+function legend(){
+  return '<p class="legend">スコア凡例:類似団体平均比の乖離率を評価方向を揃えて5段階化(+15%超=+2優位/+5〜15%=+1/±5%以内=0/−5〜−15%=−1/−15%未満=−2要注意)。'
+    +'「参考」=定義書のスコア対象外指標(累積欠損金・流動比率・原価・施設利用率・水洗化率等)。財務指標の強調色にレッドは使用しない(CE配色規律)。</p>';
+}
+
+/* ---------- 時系列 ---------- */
+function renderTs(){
+  const el = document.getElementById('pane-ts');
+  const combos = [];
+  D.timeseries.forEach(t=>{
+    const k = t.city+'|'+t.business;
+    if (!combos.includes(k)) combos.push(k);
+  });
+  let h = '<h2>時系列 R1–R5(参考ビュー)</h2>'
+    +'<p class="lead">基準年度統一(R5)の外側の参考情報です。スコア計算には使用しません(R6以降の切迫シグナルは③の定性入力で反映/定義書3.1)。桑名市はR1値なし(R6分析表の掲載期間による。3か年平均には影響なし)。</p>'
+    +'<label>市・事業: <select id="tsSel">';
+  combos.forEach(k=>{ const [c,b]=k.split('|'); h+='<option value="'+k+'">'+c+' '+b+'</option>'; });
+  h += '</select></label><div id="tsTable"></div>';
+  el.innerHTML = h;
+  const draw = ()=>{
+    const [city,biz] = document.getElementById('tsSel').value.split('|');
+    let t = '<table><tr><th class="l">指標</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th><th>R3-R5平均</th></tr>';
+    D.timeseries.filter(x=>x.city===city&&x.business===biz).forEach(x=>{
+      t += '<tr><td class="l">'+x.indicator+'</td><td>'+fmt(x.R1)+'</td><td>'+fmt(x.R2)+'</td><td>'+fmt(x.R3)+'</td><td>'+fmt(x.R4)+'</td><td>'+fmt(x.R5)+'</td><td>'+fmt(x.avg_R3R5)+'</td></tr>';
+    });
+    t += '</table>';
+    if (city==='桑名市' && biz==='公共下水道'){
+      t += '<div class="note-box plain">桑名市公共下水道の施設利用率はR4に算定方法修正(単独+流域関連の合算に変更)。R2-R3値はR4以降と非連続。</div>';
+    }
+    document.getElementById('tsTable').innerHTML = t;
+  };
+  document.getElementById('tsSel').addEventListener('change', draw);
+  draw();
+}
+
+/* ---------- 注記・出典 ---------- */
+function renderNotes(){
+  const el = document.getElementById('pane-notes');
+  let h = '<h2>注記・出典</h2><table><tr><th class="l" style="width:110px">区分</th><th class="l">内容</th></tr>';
+  D.notes.forEach(n=>{ h+='<tr><td class="l">'+n.type+'</td><td class="l">'+n.text+'</td></tr>'; });
+  h += '</table>';
+  h += '<h3>基本情報(市・事業別)</h3><table><tr><th class="l">市・事業</th><th>類似団体区分</th><th>人口</th><th>給水/処理区域内人口</th><th>普及率%</th><th>家庭料金20m³</th><th>自己資本構成比率%</th><th>年度</th><th class="l">出典</th></tr>';
+  D.basic_info.forEach(b=>{
+    h += '<tr><td class="l">'+b.entity+'</td><td>'+(b.similar_group||'−')+'</td><td>'+fmt2(b.population)+'</td><td>'+fmt2(b.served_population)+'</td><td>'+fmt2(b.coverage_pct)+'</td><td>'+fmt2(b.fee_20m3)+'</td><td>'+fmt2(b.equity_ratio)+'</td><td>'+b.fiscal_year+'</td><td class="l sr">'+(b.source||'')+'</td></tr>';
+  });
+  h += '</table><p class="legend">'+D.meta.scoring+' / '+D.meta.source+'</p>';
+  el.innerHTML = h;
+}
+function fmt2(v){ return (v===null||v===undefined)?'−':(typeof v==='number'?fmt(v):String(v)); }
+
+/* ---------- 診断・ログイン ---------- */
+function renderDiag(){
+  const el = document.getElementById('pane-diag');
+  el.innerHTML =
+   '<h2>診断・ログイン</h2>'
+  +'<p class="lead">セキュリティ設計(引き継ぎ書§4.2/§4.3/§5.1)が実挙動として機能していることを確認します。①②は公表統計のため未ログインで閲覧可。③④入力・重み設定(段階(2)以降)はログイン必須です。</p>'
+  +'<div class="diag-item"><b>0. 接続設定(config.js)</b><div class="res" id="diag0"></div></div>'
+  +'<div class="diag-item"><b>1. 匿名アクセス遮断テスト</b> — 未ログイン状態でSupabaseのデータ読取が拒否されることを確認(GRANTをauthenticatedのみに限定した設計の実挙動確認)<br>'
+  +'<button class="btn" id="btnDiag1">実行</button><div class="res" id="diag1"></div></div>'
+  +'<div class="diag-item"><b>2. サインアップ拒否テスト</b> — ダミーメールでの自己登録が「Signups not allowed」で拒否されることを確認(招待制の生命線・チェックリストC-1の実挙動確認)<br>'
+  +'<button class="btn" id="btnDiag2">実行</button><div class="res" id="diag2"></div></div>'
+  +'<div class="diag-item"><b>3. ログイン(招待ユーザー)</b><br>'
+  +'<span id="loginForm"><input type="email" id="inEmail" placeholder="メールアドレス" autocomplete="username"> '
+  +'<input type="password" id="inPass" placeholder="パスワード" autocomplete="current-password"> '
+  +'<button class="btn primary" id="btnLogin">ログイン</button></span> '
+  +'<button class="btn" id="btnLogout" style="display:none">ログアウト</button>'
+  +'<div class="res" id="diag3"></div></div>'
+  +'<div class="diag-item"><b>4. 認証後読取テスト</b> — ログイン状態でデフォルト重みプリセット(定義書8章)が読めることを確認<br>'
+  +'<button class="btn" id="btnDiag4">実行</button><div class="res" id="diag4"></div></div>';
+
+  const d0 = document.getElementById('diag0');
+  if (typeof supabase === 'undefined'){
+    d0.textContent = 'supabase-jsライブラリ(CDN)の読込に失敗しました。通信環境を確認して再読込してください。静的ダッシュボードは影響なく閲覧できます。';
+    d0.className='res warn';
+  } else if (typeof MEF_CONFIG === 'undefined' || !MEF_CONFIG.SUPABASE_URL || MEF_CONFIG.SUPABASE_URL.indexOf('xxxx')>=0){
+    d0.textContent = '未設定または雛形のまま:config.js に Project URL と Publishable key を記入してください。静的ダッシュボードは接続設定なしでも動作します。';
+    d0.className='res warn';
+  } else {
+    d0.textContent = '読込済:'+MEF_CONFIG.SUPABASE_URL;
+    d0.className='res pass';
+    sb = supabase.createClient(MEF_CONFIG.SUPABASE_URL, MEF_CONFIG.SUPABASE_ANON_KEY);
+    sb.auth.getSession().then(({data})=>{ session=data.session; updateAuthUi(); });
+    sb.auth.onAuthStateChange((_e,s)=>{ session=s; updateAuthUi(); });
+  }
+
+  document.getElementById('btnDiag1').addEventListener('click', async ()=>{
+    const out = document.getElementById('diag1'); out.textContent='実行中…'; out.className='res';
+    if (!sb){ out.textContent='config.js未設定のため実行できません'; out.className='res warn'; return; }
+    try{
+      // セッションを持たない使い捨てクライアントで匿名(anon)として読取を試行
+      const anonClient = supabase.createClient(MEF_CONFIG.SUPABASE_URL, MEF_CONFIG.SUPABASE_ANON_KEY,
+        {auth:{persistSession:false, autoRefreshToken:false, storageKey:'mef-diag-anon'}});
+      const {data, error} = await anonClient.from('weight_settings').select('preset_name').limit(1);
+      if (error){
+        out.textContent = 'PASS:匿名アクセスは拒否されました(設計どおり)。\n応答: '+error.message;
+        out.className='res pass';
+      } else if (data && data.length===0){
+        out.textContent = '注意:エラーではなく空配列が返りました。RLSは効いていますがGRANTがanonに付与されている可能性があります。SupabaseのSQL Editorで「revoke all on all tables in schema public from anon;」の要否を確認してください。';
+        out.className='res warn';
+      } else {
+        out.textContent = 'FAIL:匿名でデータが読めています。GRANT設定を至急確認してください(引き継ぎ書§4.2)。';
+        out.className='res fail';
+      }
+    }catch(e){ out.textContent='実行エラー: '+e.message; out.className='res warn'; }
+  });
+
+  document.getElementById('btnDiag2').addEventListener('click', async ()=>{
+    const out = document.getElementById('diag2'); out.textContent='実行中…'; out.className='res';
+    if (!sb){ out.textContent='config.js未設定のため実行できません'; out.className='res warn'; return; }
+    try{
+      const anonClient = supabase.createClient(MEF_CONFIG.SUPABASE_URL, MEF_CONFIG.SUPABASE_ANON_KEY,
+        {auth:{persistSession:false, autoRefreshToken:false, storageKey:'mef-diag-signup'}});
+      const dummy = 'mef-diagnostic-'+Date.now()+'@example.invalid';
+      const {data, error} = await anonClient.auth.signUp({email:dummy, password:'Diag!'+Date.now()+'x'});
+      if (error && /signup|sign-up|not allowed|disabled/i.test(error.message)){
+        out.textContent='PASS:サインアップは拒否されました(招待制が実挙動として機能)。\n応答: '+error.message;
+        out.className='res pass';
+      } else if (error){
+        out.textContent='要確認:拒否されましたが想定外の応答です。\n応答: '+error.message;
+        out.className='res warn';
+      } else {
+        out.textContent='FAIL:サインアップが受理されました。Supabaseダッシュボード > Authentication で「Allow new users to sign up」を直ちにOFFにし、作成されたユーザー('+dummy+')を削除してください。この状態では第三者が③の機微データに到達し得ます。';
+        out.className='res fail';
+      }
+    }catch(e){ out.textContent='実行エラー: '+e.message; out.className='res warn'; }
+  });
+
+  document.getElementById('btnLogin').addEventListener('click', async ()=>{
+    const out = document.getElementById('diag3'); out.textContent='ログイン中…'; out.className='res';
+    if (!sb){ out.textContent='config.js未設定のため実行できません'; out.className='res warn'; return; }
+    const email = document.getElementById('inEmail').value.trim();
+    const pass  = document.getElementById('inPass').value;
+    const {error} = await sb.auth.signInWithPassword({email, password:pass});
+    if (error){ out.textContent='ログイン失敗: '+error.message; out.className='res fail'; }
+    else { out.textContent='ログイン成功'; out.className='res pass'; }
+  });
+  document.getElementById('btnLogout').addEventListener('click', async ()=>{
+    if (sb) await sb.auth.signOut();
+    document.getElementById('diag3').textContent='ログアウトしました';
+  });
+
+  document.getElementById('btnDiag4').addEventListener('click', async ()=>{
+    const out = document.getElementById('diag4'); out.textContent='実行中…'; out.className='res';
+    if (!sb){ out.textContent='config.js未設定のため実行できません'; out.className='res warn'; return; }
+    if (!session){ out.textContent='未ログインです。先に「3. ログイン」を実行してください。'; out.className='res warn'; return; }
+    const {data, error} = await sb.from('weight_settings').select('preset_name,payload,is_default').eq('is_default',true).limit(1);
+    if (error){ out.textContent='FAIL:認証済みで読取に失敗。GRANT/ポリシーを確認してください。\n'+error.message; out.className='res fail'; }
+    else if (!data.length){ out.textContent='要確認:デフォルトプリセットが0件です。セットアップSQLの5節(INSERT)を再実行してください。'; out.className='res warn'; }
+    else {
+      const p = data[0];
+      out.textContent = 'PASS:「'+p.preset_name+'」を取得。\n切迫度の根拠: '+p.payload.urgency.rationale+'\n受入能力の根拠: '+p.payload.capacity.rationale+'\n偏差閾値: ±'+p.payload.deviation_thresholds.t1_pct+'% / ±'+p.payload.deviation_thresholds.t2_pct+'%';
+      out.className='res pass';
+    }
+  });
+}
+function updateAuthUi(){
+  const st = document.getElementById('authStatus');
+  const lf = document.getElementById('loginForm');
+  const lo = document.getElementById('btnLogout');
+  if (session){
+    st.textContent = 'ログイン中: '+(session.user?.email||'');
+    if (lf) lf.style.display='none';
+    if (lo) lo.style.display='inline-block';
+  } else {
+    st.textContent = '未ログイン(閲覧はどなたでも可・入力機能はログイン後)';
+    if (lf) lf.style.display='inline';
+    if (lo) lo.style.display='none';
+  }
+}
+
+/* ---------- タブ・初期化 ---------- */
+document.getElementById('nav').addEventListener('click', e=>{
+  if (e.target.tagName!=='BUTTON') return;
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('show'));
+  document.getElementById('pane-'+e.target.dataset.tab).classList.add('show');
+});
+
+fetch('data/mef_static_v1.json')
+  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .then(json=>{
+    D = json;
+    document.getElementById('loading').style.display='none';
+    renderGen(); renderWater(); renderSewer(); renderTs(); renderNotes(); renderDiag();
+    document.getElementById('pane-gen').classList.add('show');
+  })
+  .catch(err=>{
+    document.getElementById('loading').innerHTML =
+      '<div class="note-box"><b>静的データの読込に失敗しました:</b> '+err.message
+      +'<br>リポジトリの data/mef_static_v1.json が配置されているか、URLのパス(リポジトリ直下に001_mef.htmlとdata/フォルダ)をご確認ください。</div>';
+    renderDiag();
+  });
+</script>
+</body>
+</html>
