@@ -62,6 +62,29 @@ input[type=email],input[type=password],select{font:inherit; font-size:13px; padd
 footer{max-width:1180px; margin:0 auto; padding:14px 16px 40px; font-size:11px; color:var(--grey); border-top:1px solid var(--grey-light);}
 .tab-pane{display:none;} .tab-pane.show{display:block;}
 .sr{font-size:11px; color:var(--grey);}
+.qual-item{border:1px solid var(--grey-light); margin:12px 0; padding:12px 14px;}
+.qual-item h4{font-size:14px; margin-bottom:2px;}
+.axis-badge{display:inline-block; font-size:11px; padding:0 7px; border-radius:2px; margin-left:8px; vertical-align:middle;}
+.axis-badge.cap{background:var(--ink); color:var(--white);}
+.axis-badge.urg{background:var(--orange); color:var(--white);}
+.axis-badge.syn{background:var(--grey); color:var(--white);}
+.axis-badge.w2{background:var(--white); color:var(--ink); border:1px solid var(--ink);}
+.qual-src{font-size:11px; color:var(--grey); margin-bottom:6px;}
+.anchor{display:block; padding:5px 8px; border:1px solid var(--grey-light); border-radius:2px; margin:4px 0; cursor:pointer; font-size:13px;}
+.anchor input{margin-right:8px;}
+.anchor.current{border-color:var(--ink); background:#F5F5F5;}
+.qual-form{margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+.qual-form input[type=text]{flex:1; min-width:220px; font:inherit; font-size:13px; padding:6px 8px; border:1px solid var(--grey-light); border-radius:2px;}
+.eff{font-size:12px; margin:4px 0 8px;}
+.eff b{font-size:15px;}
+.hist{font-size:12px; margin-top:8px; border-top:1px dashed var(--grey-light); padding-top:6px;}
+.hist table{font-size:12px;}
+.hist .del{color:var(--grey); text-decoration:line-through;}
+.linklike{background:none; border:none; color:var(--red); cursor:pointer; font-size:12px; padding:0; text-decoration:underline;}
+.savemsg{font-size:12px;}
+.savemsg.ok{color:var(--ink); font-weight:700;}
+.savemsg.err{color:var(--red); font-weight:700;}
+details.histbox summary{cursor:pointer; font-size:12px; color:var(--grey);}
 @media (max-width:700px){ th,td{padding:4px 5px; font-size:12px;} .brand{font-size:22px;} }
 </style>
 </head>
@@ -76,6 +99,7 @@ footer{max-width:1180px; margin:0 auto; padding:14px 16px 40px; font-size:11px; 
   <button data-tab="gen" class="active">① 一般会計</button>
   <button data-tab="water">② 水道</button>
   <button data-tab="sewer">② 下水道</button>
+  <button data-tab="qual">③④ 入力</button>
   <button data-tab="ts">時系列 R1–R5</button>
   <button data-tab="notes">注記・出典</button>
   <button data-tab="diag">診断・ログイン</button>
@@ -86,6 +110,7 @@ footer{max-width:1180px; margin:0 auto; padding:14px 16px 40px; font-size:11px; 
   <section id="pane-gen" class="tab-pane"></section>
   <section id="pane-water" class="tab-pane"></section>
   <section id="pane-sewer" class="tab-pane"></section>
+  <section id="pane-qual" class="tab-pane"></section>
   <section id="pane-ts" class="tab-pane"></section>
   <section id="pane-notes" class="tab-pane"></section>
   <section id="pane-diag" class="tab-pane"></section>
@@ -518,7 +543,169 @@ function updateAuthUi(){
     if (lf) lf.style.display='inline';
     if (lo) lo.style.display='none';
   }
+  const qp = document.getElementById('pane-qual');
+  if (qp && qp.classList.contains('show')) renderQual();
 }
+
+/* ---------- ③④ 入力(定義書6・7章 アンカー選択式/追記専用履歴) ---------- */
+const QUAL_KEYS = {kosai:"静岡県|湖西市", nakatsugawa:"岐阜県|中津川市", kuwana:"三重県|桑名市"};
+const QUAL_DEF = [
+ {code:"3-1", max:4, axis:"cap", w2:true,
+  title:"3-1 管路台帳の電子化・データベース化(データ基盤成熟度)",
+  src:"確認ソース:各市経営戦略・ストックマネジメント計画・予算資料・ヒアリング",
+  anchors:["0:L0(紙台帳のみ)","1:L1(図面の電子化(CAD等)・表計算台帳。位置と属性の一体照会不可)",
+           "2:L2(管路台帳の電子化・データベース化=国費要件の充足ライン)",
+           "3:L3(点検・診断・修繕履歴データとの統合。劣化予測と更新優先順位付けが回る)",
+           "4:L4(運転監視・エネルギー・顧客料金・水道スマートメーター使用量まで統合した経営基盤)"]},
+ {code:"3-2", max:3, axis:"cap", w2:true,
+  title:"3-2 包括委託・コンセッション導入の検討段階",
+  src:"確認ソース:議会会議録・審議会資料・予算資料",
+  anchors:["0:未検討","1:庁内研究・情報収集段階","2:導入可能性調査・審議会付議","3:導入方針決定・公表済"]},
+ {code:"3-3", max:3, axis:"cap",
+  title:"3-3 経営戦略・アセットマネジメント計画",
+  src:"確認ソース:各市経営戦略・ストックマネジメント計画",
+  anchors:["0:未策定","1:策定済・未改定(5年超)","2:策定済・改定サイクル運用中","3:直近改定済かつ投資計画と料金戦略が接続"]},
+ {code:"3-4", max:3, axis:"urg",
+  title:"3-4 経営審議会の活動状況",
+  src:"確認ソース:審議会議事録・答申 ※切迫度の定性補完(R5基準統一で落ちる直近シグナルの受け皿)",
+  anchors:["0:設置なし","1:設置済・休眠","2:審議中","3:答申直後(1年以内)で改革の窓が開いている"]},
+ {code:"3-5", max:3, axis:"urg",
+  title:"3-5 料金改定の直近時期と経緯",
+  src:"確認ソース:料金条例改正履歴・審議会資料・広報 ※切迫度の定性補完",
+  anchors:["0:直近改定済(3年以内)で当面据置見込み","1:改定後3〜10年","2:10年超未改定または改定審議中","3:原価割れ公表かつ改定審議中"]},
+ {code:"3-6", max:3, axis:"cap",
+  title:"3-6 首長任期・議会構成",
+  src:"確認ソース:選挙管理委員会・施政方針・議会会議録 ※機微情報。根拠は事実(任期・公約・会議録)ベースで記録",
+  anchors:["0:改選1年以内で大型案件回避局面","1:会派状況不透明","2:任期中盤で政策推進局面","3:首長が公民連携・行革を公約に明示"]},
+ {code:"3-7", max:3, axis:"cap",
+  title:"3-7 民間委託実績",
+  src:"確認ソース:契約実績・入札公告",
+  anchors:["0:直営中心・個別委託のみ","1:運転管理等の個別委託が定着","2:性能発注または複数業務の包括委託実績あり","3:包括委託を仕様発注から性能発注へ移行済"]},
+ {code:"3-8", max:3, axis:"cap",
+  title:"3-8 広域連携の枠組み",
+  src:"確認ソース:都道府県の水道広域化推進プラン・広域化・共同化計画",
+  anchors:["0:参加なし","1:協議会等に参加","2:県主導の広域化計画で具体的位置づけあり","3:共同発注・共同処理の実績あり"]},
+ {code:"4-1", max:3, axis:"syn",
+  title:"4-1 既存の市町村との接点・協定",
+  src:"評価の視点:サウンディングの初動コストと信頼形成の先行度",
+  anchors:["0:接点なし","1:営業接点あり","2:包括連携・防災協定等の締結済","3:共同事業・実証の実績あり"]},
+ {code:"4-2", max:3, axis:"syn",
+  title:"4-2 広域プラットフォームのハブ性",
+  src:"評価の視点:H2(複数市町プラットフォーム)への接続性。CBM・人材プールは圏域プールで初めて経済性が成立。L3〜L4基盤の圏域共通化可否も含む",
+  anchors:["0:孤立立地","1:近隣に対象候補が少数","2:近隣圏に複数の候補市町が連坦","3:CBM・人材プールの圏域運用の核になり得る"]},
+ {code:"4-3", max:3, axis:"syn",
+  title:"4-3 中立性の効きやすさ",
+  src:"評価の視点:非機器メーカーとしての構造的中立性が調達上の差別化として機能する度合い。台帳・診断データの透明化による過剰更新の抑制はその実装手段",
+  anchors:["0:性能発注の見込みなし","1:仕様発注中心","2:性能発注への移行意向あり","3:性能発注方針が明示され、機器メーカー系との利益相反回避が論点化済"]}
+];
+let qualRows = [];      // 選択中団体の全入力行(履歴含む)
+let qualCity = "nakatsugawa";
+
+function axisBadge(def){
+  let h='';
+  if (def.axis==='cap') h+='<span class="axis-badge cap">受入能力</span>';
+  if (def.axis==='urg') h+='<span class="axis-badge urg">切迫度(定性補完)</span>';
+  if (def.axis==='syn') h+='<span class="axis-badge syn">④シナジー</span>';
+  if (def.w2) h+='<span class="axis-badge w2">重み2倍(FY2027国費要件直結)</span>';
+  return h;
+}
+function renderQual(){
+  const el = document.getElementById('pane-qual');
+  if (!sb){
+    el.innerHTML = '<h2>③制度・政治環境/④当社シナジー 入力</h2><div class="note-box">config.js が未設定のため利用できません。「診断・ログイン」タブで接続設定を確認してください。</div>';
+    return;
+  }
+  if (!session){
+    el.innerHTML = '<h2>③制度・政治環境/④当社シナジー 入力</h2>'
+      +'<div class="note-box">③④は首長・議会評価等の機微な内部評価を含むため、招待ユーザーのログインが必要です(データはSupabase側にのみ保存され、静的リポジトリには置かれません)。「診断・ログイン」タブからログイン後、このタブを開き直してください。</div>';
+    return;
+  }
+  let h = '<h2>③制度・政治環境/④当社シナジー 入力</h2>'
+    +'<p class="lead">定義書6・7章のアンカー選択式。<b>根拠資料名の記録が必須</b>です(定義書9.2:入力者判断の恣意性抑制)。入力は追記専用で、同一項目の最新の非取消行が有効値になります(過去行はそのまま履歴)。3-1・3-2はFY2027国費要件に直結するため受入能力軸内で重み2倍(定義書6章)。</p>'
+    +'<label>対象団体: <select id="qualCity">';
+  CITIES.forEach(c=>{ h+='<option value="'+c.key+'"'+(c.key===qualCity?' selected':'')+'>'+c.name+'('+c.pref+')</option>'; });
+  h += '</select></label> <span id="qualSummary" class="sr"></span><div id="qualList">読み込み中…</div>';
+  el.innerHTML = h;
+  document.getElementById('qualCity').addEventListener('change', e=>{ qualCity=e.target.value; loadQual(); });
+  loadQual();
+}
+async function loadQual(){
+  const list = document.getElementById('qualList');
+  if (!list) return;
+  list.innerHTML = '読み込み中…';
+  const key = QUAL_KEYS[qualCity];
+  const {data, error} = await sb.from('qualitative_inputs')
+    .select('id,item_code,level,evidence,note,entered_by,is_deleted,created_at')
+    .eq('municipality_key', key)
+    .order('created_at', {ascending:false});
+  if (error){ list.innerHTML = '<div class="note-box">読取エラー: '+error.message+'</div>'; return; }
+  qualRows = data||[];
+  // 有効値 = 項目ごとの最新の非取消行
+  const eff = {};
+  qualRows.forEach(r=>{ if(!r.is_deleted && !(r.item_code in eff)) eff[r.item_code]=r; });
+  const filled = QUAL_DEF.filter(d=>eff[d.code]).length;
+  const sm = document.getElementById('qualSummary');
+  if (sm) sm.textContent = '入力状況: '+filled+'/'+QUAL_DEF.length+'項目'+(filled<QUAL_DEF.length?'(未入力の項目はマトリクス(段階3)で暫定扱い)':'');
+  let h='';
+  QUAL_DEF.forEach(def=>{
+    const cur = eff[def.code];
+    h += '<div class="qual-item"><h4>'+def.title+axisBadge(def)+'</h4><div class="qual-src">'+def.src+'</div>';
+    h += cur
+      ? '<div class="eff">現在の有効値: <b>'+cur.level+'点</b> <span class="sr">('+String(cur.created_at).slice(0,10)+' / '+(cur.entered_by||'')+' / 根拠: '+esc(cur.evidence)+')</span></div>'
+      : '<div class="eff sr">未入力</div>';
+    def.anchors.forEach(a=>{
+      const lv = parseInt(a.split(':')[0],10);
+      h += '<label class="anchor'+(cur&&cur.level===lv?' current':'')+'"><input type="radio" name="anc-'+def.code+'" value="'+lv+'"'+(cur&&cur.level===lv?' checked':'')+'>'+esc(a)+'</label>';
+    });
+    h += '<div class="qual-form">'
+       +'<input type="text" id="ev-'+def.code+'" placeholder="根拠資料名(必須。例:中津川市上下水道事業経営審議会答申 R7.2)" maxlength="300">'
+       +'<input type="text" id="nt-'+def.code+'" placeholder="補足メモ(任意)" maxlength="300" style="max-width:220px">'
+       +'<button class="btn primary" data-save="'+def.code+'">保存</button>'
+       +'<span class="savemsg" id="msg-'+def.code+'"></span></div>';
+    const hist = qualRows.filter(r=>r.item_code===def.code);
+    if (hist.length){
+      h += '<details class="histbox"><summary>入力履歴('+hist.length+'件)</summary><div class="hist"><table><tr><th>日時</th><th>点</th><th class="l">根拠</th><th class="l">メモ</th><th>入力者</th><th></th></tr>';
+      hist.forEach(r=>{
+        h += '<tr class="'+(r.is_deleted?'del':'')+'"><td>'+String(r.created_at).slice(0,16).replace('T',' ')+'</td><td>'+r.level+'</td><td class="l">'+esc(r.evidence)+'</td><td class="l">'+esc(r.note||'')+'</td><td>'+esc(r.entered_by||'')+'</td>'
+           +'<td>'+(r.is_deleted?'取消済':'<button class="linklike" data-cancel="'+r.id+'">取消</button>')+'</td></tr>';
+      });
+      h += '</table></div></details>';
+    }
+    h += '</div>';
+  });
+  list.innerHTML = h;
+  list.querySelectorAll('button[data-save]').forEach(b=>b.addEventListener('click', ()=>saveQual(b.dataset.save)));
+  list.querySelectorAll('button[data-cancel]').forEach(b=>b.addEventListener('click', ()=>cancelQual(b.dataset.cancel)));
+}
+async function saveQual(code){
+  const msg = document.getElementById('msg-'+code);
+  msg.textContent=''; msg.className='savemsg';
+  const def = QUAL_DEF.find(d=>d.code===code);
+  const sel = document.querySelector('input[name="anc-'+code+'"]:checked');
+  const ev  = document.getElementById('ev-'+code).value.trim();
+  const nt  = document.getElementById('nt-'+code).value.trim();
+  if (!sel){ msg.textContent='アンカーを選択してください'; msg.className='savemsg err'; return; }
+  const lv = parseInt(sel.value,10);
+  if (lv<0 || lv>def.max){ msg.textContent='点数が範囲外です(0〜'+def.max+')'; msg.className='savemsg err'; return; }
+  if (!ev){ msg.textContent='根拠資料名は必須です(定義書9.2)'; msg.className='savemsg err'; return; }
+  msg.textContent='保存中…';
+  const {error} = await sb.from('qualitative_inputs').insert({
+    municipality_key: QUAL_KEYS[qualCity], item_code: code, level: lv,
+    evidence: ev, note: nt||null, entered_by: session.user?.email||null
+  });
+  if (error){ msg.textContent='保存失敗: '+error.message; msg.className='savemsg err'; return; }
+  msg.textContent='保存しました'; msg.className='savemsg ok';
+  loadQual();
+}
+async function cancelQual(id){
+  if (!confirm('この入力行を取消しますか?(履歴には取消済として残ります)')) return;
+  const {error} = await sb.from('qualitative_inputs').update({is_deleted:true}).eq('id', id);
+  if (error){ alert('取消失敗: '+error.message); return; }
+  loadQual();
+}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// 内部検証フック(UIからは不可視。実データには影響しない)
+window.__mefTest = { setSb:(x)=>{sb=x;}, setSession:(s)=>{session=s;}, renderQual:()=>renderQual() };
 
 /* ---------- タブ・初期化 ---------- */
 document.getElementById('nav').addEventListener('click', e=>{
@@ -527,6 +714,7 @@ document.getElementById('nav').addEventListener('click', e=>{
   e.target.classList.add('active');
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('show'));
   document.getElementById('pane-'+e.target.dataset.tab).classList.add('show');
+  if (e.target.dataset.tab==='qual') renderQual();
 });
 
 fetch('data/mef_static_v1.json')
