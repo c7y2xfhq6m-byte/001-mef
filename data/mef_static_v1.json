@@ -1,0 +1,2399 @@
+{
+ "meta": {
+  "version": "v1",
+  "generated": "2026-07-20",
+  "base_fiscal_year": "令和5年度(R5)決算",
+  "scoring": "類似団体平均比の乖離率方式・5段階(閾値±5%/±15%)。料金回収率・経費回収率・管路更新率は3か年平均(R3-R5)を採用(指標定義書3.3)。",
+  "gen_baseline_note": "※類型平均は、提供5県（岐阜・静岡・愛知・三重・長野）237団体のうち同一市町村類型の平均値（暫定）。正式な全国類似団体平均は「類似団体別市町村財政指数表」取得後に置換。出典：総務省 令和5年度市町村決算カード（県別Excel、ユーザー提供2026-07-20）",
+  "source": "①②_R5統一比較表_v2.xlsx(確定データ)から機械生成"
+ },
+ "basic_info": [
+  {
+   "entity": "湖西市 水道(末端給水)",
+   "similar_group": "A4",
+   "population": 58079,
+   "served_population": 57552,
+   "coverage_pct": 99.58,
+   "fee_20m3": 2750,
+   "equity_ratio": 94.34,
+   "fiscal_year": "R5",
+   "source": "市公表 経営比較分析表(R5決算)Excel"
+  },
+  {
+   "entity": "湖西市 公共下水道",
+   "similar_group": "Cc2",
+   "population": 58079,
+   "served_population": 22074,
+   "coverage_pct": 38.19,
+   "fee_20m3": 2872,
+   "equity_ratio": 59.98,
+   "fiscal_year": "R5",
+   "source": "同上"
+  },
+  {
+   "entity": "湖西市 特環公共下水道",
+   "similar_group": "D2",
+   "population": 58079,
+   "served_population": 3588,
+   "coverage_pct": 6.21,
+   "fee_20m3": 2872,
+   "equity_ratio": 64.43,
+   "fiscal_year": "R5",
+   "source": "同上"
+  },
+  {
+   "entity": "中津川市 水道(末端給水)",
+   "similar_group": "A4",
+   "population": 74532,
+   "served_population": 73281,
+   "coverage_pct": 98.97,
+   "fee_20m3": 3410,
+   "equity_ratio": 76.95,
+   "fiscal_year": "R5",
+   "source": "市公表 経営比較分析表(R5決算)Excel"
+  },
+  {
+   "entity": "中津川市 公共下水道",
+   "similar_group": "Cd1",
+   "population": 74532,
+   "served_population": 23601,
+   "coverage_pct": 31.87,
+   "fee_20m3": 3740,
+   "equity_ratio": 72.17,
+   "fiscal_year": "R5",
+   "source": "同上"
+  },
+  {
+   "entity": "中津川市 特環公共下水道",
+   "similar_group": "D2",
+   "population": 74532,
+   "served_population": 19245,
+   "coverage_pct": 25.99,
+   "fee_20m3": 3740,
+   "equity_ratio": 63.57,
+   "fiscal_year": "R5",
+   "source": "同上"
+  },
+  {
+   "entity": "中津川市 農業集落排水",
+   "similar_group": "F1",
+   "population": 74532,
+   "served_population": 7356,
+   "coverage_pct": 9.93,
+   "fee_20m3": 3740,
+   "equity_ratio": 72.93,
+   "fiscal_year": "R5",
+   "source": "同上"
+  },
+  {
+   "entity": "中津川市 個別排水処理",
+   "similar_group": "L2",
+   "population": 74532,
+   "served_population": 201,
+   "coverage_pct": 0.27,
+   "fee_20m3": 3740,
+   "equity_ratio": -144.64,
+   "fiscal_year": "R5",
+   "source": "同上"
+  },
+  {
+   "entity": "桑名市 水道(末端給水)",
+   "similar_group": "A3",
+   "population": "(R6:137,978)",
+   "served_population": "(R6:137,461)",
+   "coverage_pct": "(R6:99.99)",
+   "fee_20m3": "(R6:2,750)",
+   "equity_ratio": "(R6:62.32)",
+   "fiscal_year": "R5",
+   "source": "市公表 経営比較分析表(R6決算)PDFのR05列"
+  },
+  {
+   "entity": "桑名市 公共下水道",
+   "similar_group": "Ad",
+   "population": "(R6:137,978)",
+   "served_population": "(R6:112,703)",
+   "coverage_pct": "(R6:81.98)",
+   "fee_20m3": "(R6:3,496)",
+   "equity_ratio": "(R6:68.67)",
+   "fiscal_year": "R5",
+   "source": "同上"
+  },
+  {
+   "entity": "桑名市 農業集落排水",
+   "similar_group": "(R6:F2)",
+   "population": "—",
+   "served_population": "(R6:1,339)",
+   "coverage_pct": "—",
+   "fee_20m3": "—",
+   "equity_ratio": "—",
+   "fiscal_year": "R5欠測",
+   "source": "R6.3.31法適用化のためR5分析表なし"
+  }
+ ],
+ "gen_account": [
+  {
+   "indicator": "財政力指数",
+   "unit": "-",
+   "direction_note": "高いほど＋(受入)",
+   "kosai": 1,
+   "nakatsugawa": 0.49,
+   "kuwana": 0.8,
+   "avg_II2": 0.68,
+   "avg_III2": 0.74
+  },
+  {
+   "indicator": "経常収支比率",
+   "unit": "%",
+   "direction_note": "低いほど＋(受入)",
+   "kosai": 92.6,
+   "nakatsugawa": 89.7,
+   "kuwana": 92.6,
+   "avg_II2": 90.23,
+   "avg_III2": 89.11
+  },
+  {
+   "indicator": "実質公債費比率",
+   "unit": "%",
+   "direction_note": "低いほど＋(受入)",
+   "kosai": 4.9,
+   "nakatsugawa": 6.9,
+   "kuwana": 7.2,
+   "avg_II2": 6.01,
+   "avg_III2": 5.74
+  },
+  {
+   "indicator": "将来負担比率",
+   "unit": "%",
+   "direction_note": "低いほど＋(受入)",
+   "kosai": 2.4,
+   "nakatsugawa": "−(算定なし)",
+   "kuwana": 36.4,
+   "avg_II2": 33.3,
+   "avg_III2": 24.59
+  },
+  {
+   "indicator": "地方交付税依存度",
+   "unit": "%",
+   "direction_note": "低いほど＋(受入)",
+   "kosai": 0.4,
+   "nakatsugawa": 23.6,
+   "kuwana": 9.4,
+   "avg_II2": 18.25,
+   "avg_III2": 15.29
+  },
+  {
+   "indicator": "地方税(人口1人当たり)",
+   "unit": "千円/人",
+   "direction_note": "高いほど＋(受入)",
+   "kosai": 203.1,
+   "nakatsugawa": 150.9,
+   "kuwana": 167.9,
+   "avg_II2": 160.34,
+   "avg_III2": 168.38
+  },
+  {
+   "indicator": "地方債現在高(同上)",
+   "unit": "千円/人",
+   "direction_note": "低いほど＋(受入)",
+   "kosai": 320.9,
+   "nakatsugawa": 455.8,
+   "kuwana": 452.1,
+   "avg_II2": 374.84,
+   "avg_III2": 422.36
+  },
+  {
+   "indicator": "国勢調査人口増減率(H27→R2)",
+   "unit": "%",
+   "direction_note": "減少大ほど切迫＋",
+   "kosai": -3.2,
+   "nakatsugawa": -2.9,
+   "kuwana": -1.2,
+   "avg_II2": -2.58,
+   "avg_III2": -2.55
+  },
+  {
+   "indicator": "職員数(人口千人当たり)",
+   "unit": "人",
+   "direction_note": "参考指標",
+   "kosai": 8.56,
+   "nakatsugawa": 10.25,
+   "kuwana": 7.25,
+   "avg_II2": 8.65,
+   "avg_III2": 7.98
+  },
+  {
+   "indicator": "住民基本台帳人口(R6.1.1)",
+   "unit": "人",
+   "direction_note": "基本情報",
+   "kosai": 58079,
+   "nakatsugawa": 74532,
+   "kuwana": 138963,
+   "avg_II2": "−",
+   "avg_III2": "−"
+  },
+  {
+   "indicator": "将来推計人口指数(2050/2020)",
+   "unit": "-",
+   "direction_note": "切迫(取得予定)",
+   "kosai": "欠測(社人研から取得予定)",
+   "nakatsugawa": "同左",
+   "kuwana": "同左",
+   "avg_II2": "−",
+   "avg_III2": "−"
+  }
+ ],
+ "water": {
+  "header": "水道事業（末端給水）R5決算　※類似区分：湖西A4／中津川A4／桑名A3（桑名のみ規模上位区分）",
+  "rows": [
+   {
+    "indicator": "①経常収支比率",
+    "unit": "%",
+    "kosai": {
+     "value": 111.84,
+     "peer_avg": 109.05
+    },
+    "nakatsugawa": {
+     "value": 100.07,
+     "peer_avg": 109.05
+    },
+    "kuwana": {
+     "value": 109.77,
+     "peer_avg": 110.2
+    }
+   },
+   {
+    "indicator": "②累積欠損金比率",
+    "unit": "%",
+    "kosai": {
+     "value": 0.0,
+     "peer_avg": 1.02
+    },
+    "nakatsugawa": {
+     "value": 0.0,
+     "peer_avg": 1.02
+    },
+    "kuwana": {
+     "value": 0.0,
+     "peer_avg": 0.05
+    }
+   },
+   {
+    "indicator": "③流動比率",
+    "unit": "%",
+    "kosai": {
+     "value": 993.91,
+     "peer_avg": 344.88
+    },
+    "nakatsugawa": {
+     "value": 142.37,
+     "peer_avg": 344.88
+    },
+    "kuwana": {
+     "value": 402.27,
+     "peer_avg": 369.82
+    }
+   },
+   {
+    "indicator": "④企業債残高対給水収益比率",
+    "unit": "%",
+    "kosai": {
+     "value": 48.4,
+     "peer_avg": 304.02
+    },
+    "nakatsugawa": {
+     "value": 192.39,
+     "peer_avg": 304.02
+    },
+    "kuwana": {
+     "value": 327.16,
+     "peer_avg": 218.57
+    }
+   },
+   {
+    "indicator": "⑤料金回収率",
+    "unit": "%",
+    "kosai": {
+     "value": 109.4,
+     "peer_avg": 98.89
+    },
+    "nakatsugawa": {
+     "value": 87.57,
+     "peer_avg": 98.89
+    },
+    "kuwana": {
+     "value": 105.84,
+     "peer_avg": 101.78
+    }
+   },
+   {
+    "indicator": "⑥給水原価",
+    "unit": "円/m3",
+    "kosai": {
+     "value": 150.04,
+     "peer_avg": 174.52
+    },
+    "nakatsugawa": {
+     "value": 225.52,
+     "peer_avg": 174.52
+    },
+    "kuwana": {
+     "value": 143.39,
+     "peer_avg": 163.94
+    }
+   },
+   {
+    "indicator": "⑦施設利用率",
+    "unit": "%",
+    "kosai": {
+     "value": 49.83,
+     "peer_avg": 58.77
+    },
+    "nakatsugawa": {
+     "value": 76.75,
+     "peer_avg": 58.77
+    },
+    "kuwana": {
+     "value": 58.88,
+     "peer_avg": 62.35
+    }
+   },
+   {
+    "indicator": "⑧有収率",
+    "unit": "%",
+    "kosai": {
+     "value": 92.86,
+     "peer_avg": 86.95
+    },
+    "nakatsugawa": {
+     "value": 66.15,
+     "peer_avg": 86.95
+    },
+    "kuwana": {
+     "value": 80.01,
+     "peer_avg": 88.71
+    }
+   },
+   {
+    "indicator": "①有形固定資産減価償却率",
+    "unit": "%",
+    "kosai": {
+     "value": 53.64,
+     "peer_avg": 51.79
+    },
+    "nakatsugawa": {
+     "value": 42.63,
+     "peer_avg": 51.79
+    },
+    "kuwana": {
+     "value": 58.24,
+     "peer_avg": 51.95
+    }
+   },
+   {
+    "indicator": "②管路経年化率",
+    "unit": "%",
+    "kosai": {
+     "value": 2.75,
+     "peer_avg": 23.19
+    },
+    "nakatsugawa": {
+     "value": 21.29,
+     "peer_avg": 23.19
+    },
+    "kuwana": {
+     "value": 36.09,
+     "peer_avg": 24.49
+    }
+   },
+   {
+    "indicator": "③管路更新率",
+    "unit": "%",
+    "kosai": {
+     "value": 0.52,
+     "peer_avg": 0.53
+    },
+    "nakatsugawa": {
+     "value": 0.71,
+     "peer_avg": 0.53
+    },
+    "kuwana": {
+     "value": 0.45,
+     "peer_avg": 0.58
+    }
+   }
+  ],
+  "avg3y": {
+   "複数年平均（指標定義書3.3：単年ボラティリティ対策）": {
+    "kosai": null,
+    "nakatsugawa": null,
+    "kuwana": null
+   },
+   "料金回収率（R3-R5平均）": {
+    "kosai": 112.1667,
+    "nakatsugawa": 90.32,
+    "kuwana": 102.1033
+   }
+  }
+ },
+ "sewer": {
+  "blocks": [
+   {
+    "title": "公共下水道",
+    "header": "公共下水道 R5決算　※類似区分：湖西Cc2／中津川Cd1／桑名Ad（母集団が異なる点に注意）",
+    "rows": [
+     {
+      "indicator": "①経常収支比率",
+      "unit": "%",
+      "kosai": {
+       "value": 99.7,
+       "peer_avg": 106.87
+      },
+      "nakatsugawa": {
+       "value": 105.97,
+       "peer_avg": 106.8
+      },
+      "kuwana": {
+       "value": 109.49,
+       "peer_avg": 107.76
+      }
+     },
+     {
+      "indicator": "②累積欠損金比率",
+      "unit": "%",
+      "kosai": {
+       "value": 0.0,
+       "peer_avg": 21.73
+      },
+      "nakatsugawa": {
+       "value": 0.0,
+       "peer_avg": 26.89
+      },
+      "kuwana": {
+       "value": 0.0,
+       "peer_avg": 1.02
+      }
+     },
+     {
+      "indicator": "③流動比率",
+      "unit": "%",
+      "kosai": {
+       "value": 55.37,
+       "peer_avg": 62.37
+      },
+      "nakatsugawa": {
+       "value": 61.47,
+       "peer_avg": 77.26
+      },
+      "kuwana": {
+       "value": 67.78,
+       "peer_avg": 72.78
+      }
+     },
+     {
+      "indicator": "④企業債残高対事業規模比率",
+      "unit": "%",
+      "kosai": {
+       "value": 0.0,
+       "peer_avg": 1042.77
+      },
+      "nakatsugawa": {
+       "value": 315.11,
+       "peer_avg": 730.84
+      },
+      "kuwana": {
+       "value": 789.7,
+       "peer_avg": 790.32
+      }
+     },
+     {
+      "indicator": "⑤経費回収率",
+      "unit": "%",
+      "kosai": {
+       "value": 87.11,
+       "peer_avg": 84.48
+      },
+      "nakatsugawa": {
+       "value": 93.46,
+       "peer_avg": 89.17
+      },
+      "kuwana": {
+       "value": 113.6,
+       "peer_avg": 98.7
+      }
+     },
+     {
+      "indicator": "⑥汚水処理原価",
+      "unit": "円/m3",
+      "kosai": {
+       "value": 166.18,
+       "peer_avg": 187.11
+      },
+      "nakatsugawa": {
+       "value": 208.82,
+       "peer_avg": 184.85
+      },
+      "kuwana": {
+       "value": 172.45,
+       "peer_avg": 160.65
+      }
+     },
+     {
+      "indicator": "⑦施設利用率",
+      "unit": "%",
+      "kosai": {
+       "value": 56.17,
+       "peer_avg": 49.28
+      },
+      "nakatsugawa": {
+       "value": 52.53,
+       "peer_avg": 55.04
+      },
+      "kuwana": {
+       "value": 63.88,
+       "peer_avg": 65.11
+      }
+     },
+     {
+      "indicator": "⑧水洗化率",
+      "unit": "%",
+      "kosai": {
+       "value": 83.52,
+       "peer_avg": 79.7
+      },
+      "nakatsugawa": {
+       "value": 86.48,
+       "peer_avg": 91.92
+      },
+      "kuwana": {
+       "value": 93.12,
+       "peer_avg": 94.69
+      }
+     },
+     {
+      "indicator": "①有形固定資産減価償却率",
+      "unit": "%",
+      "kosai": {
+       "value": 15.38,
+       "peer_avg": 17.05
+      },
+      "nakatsugawa": {
+       "value": 14.09,
+       "peer_avg": 31.14
+      },
+      "kuwana": {
+       "value": 34.46,
+       "peer_avg": 38.87
+      }
+     },
+     {
+      "indicator": "②管渠老朽化率",
+      "unit": "%",
+      "kosai": {
+       "value": 0.0,
+       "peer_avg": 0.22
+      },
+      "nakatsugawa": {
+       "value": 0.0,
+       "peer_avg": 0.76
+      },
+      "kuwana": {
+       "value": 0.72,
+       "peer_avg": 7.69
+      }
+     },
+     {
+      "indicator": "③管渠改善率",
+      "unit": "%",
+      "kosai": {
+       "value": 0.0,
+       "peer_avg": 0.58
+      },
+      "nakatsugawa": {
+       "value": 0.21,
+       "peer_avg": 0.06
+      },
+      "kuwana": {
+       "value": 0.0,
+       "peer_avg": 0.18
+      }
+     }
+    ]
+   },
+   {
+    "title": "特定環境保全公共下水道",
+    "header": "特定環境保全公共下水道 R5決算　※湖西D2／中津川D2　※桑名は事業なし",
+    "rows": [
+     {
+      "indicator": "①経常収支比率",
+      "unit": "%",
+      "kosai": {
+       "value": 98.92,
+       "peer_avg": 107.11
+      },
+      "nakatsugawa": {
+       "value": 90.92,
+       "peer_avg": 107.11
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "②累積欠損金比率",
+      "unit": "%",
+      "kosai": {
+       "value": 0.0,
+       "peer_avg": 69.54
+      },
+      "nakatsugawa": {
+       "value": 0.0,
+       "peer_avg": 69.54
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "③流動比率",
+      "unit": "%",
+      "kosai": {
+       "value": 61.23,
+       "peer_avg": 50.63
+      },
+      "nakatsugawa": {
+       "value": 74.49,
+       "peer_avg": 50.63
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "④企業債残高対事業規模比率",
+      "unit": "%",
+      "kosai": {
+       "value": 0.0,
+       "peer_avg": 1168.69
+      },
+      "nakatsugawa": {
+       "value": 1508.56,
+       "peer_avg": 1168.69
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "⑤経費回収率",
+      "unit": "%",
+      "kosai": {
+       "value": 87.11,
+       "peer_avg": 70.71
+      },
+      "nakatsugawa": {
+       "value": 103.04,
+       "peer_avg": 70.71
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "⑥汚水処理原価",
+      "unit": "円/m3",
+      "kosai": {
+       "value": 165.75,
+       "peer_avg": 233.15
+      },
+      "nakatsugawa": {
+       "value": 185.56,
+       "peer_avg": 233.15
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "⑦施設利用率",
+      "unit": "%",
+      "kosai": {
+       "value": 77.07,
+       "peer_avg": 42.09
+      },
+      "nakatsugawa": {
+       "value": 48.49,
+       "peer_avg": 42.09
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "⑧水洗化率",
+      "unit": "%",
+      "kosai": {
+       "value": 84.56,
+       "peer_avg": 84.73
+      },
+      "nakatsugawa": {
+       "value": 92.09,
+       "peer_avg": 84.73
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "①有形固定資産減価償却率",
+      "unit": "%",
+      "kosai": {
+       "value": 23.47,
+       "peer_avg": 26.77
+      },
+      "nakatsugawa": {
+       "value": 15.88,
+       "peer_avg": 26.77
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "②管渠老朽化率",
+      "unit": "%",
+      "kosai": {
+       "value": 0.0,
+       "peer_avg": 0.07
+      },
+      "nakatsugawa": {
+       "value": 0.0,
+       "peer_avg": 0.07
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "③管渠改善率",
+      "unit": "%",
+      "kosai": {
+       "value": 0.0,
+       "peer_avg": 0.06
+      },
+      "nakatsugawa": {
+       "value": 0.0,
+       "peer_avg": 0.06
+      },
+      "kuwana": {
+       "na": true
+      }
+     }
+    ]
+   },
+   {
+    "title": "農業集落排水",
+    "header": "農業集落排水 R5決算　※中津川F1　※桑名はR6.3.31法適用化のためR5欠測　※湖西は事業なし",
+    "rows": [
+     {
+      "indicator": "①経常収支比率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 90.74,
+       "peer_avg": 103.07
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "②累積欠損金比率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 25.29,
+       "peer_avg": 120.64
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "③流動比率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 44.72,
+       "peer_avg": 39.82
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "④企業債残高対事業規模比率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 38.04,
+       "peer_avg": 743.31
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "⑤経費回収率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 84.82,
+       "peer_avg": 61.15
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "⑥汚水処理原価",
+      "unit": "円/m3",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 222.09,
+       "peer_avg": 250.43
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "⑦施設利用率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 53.0,
+       "peer_avg": 52.63
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "⑧水洗化率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 86.62,
+       "peer_avg": 90.32
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "①有形固定資産減価償却率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 14.52,
+       "peer_avg": 30.5
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "②管渠老朽化率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 0.0,
+       "peer_avg": 0.0
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "③管渠改善率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 0.15,
+       "peer_avg": 0.02
+      },
+      "kuwana": {
+       "na": true
+      }
+     }
+    ]
+   },
+   {
+    "title": "個別排水処理",
+    "header": "個別排水処理 R5決算　※中津川L2のみ",
+    "rows": [
+     {
+      "indicator": "①経常収支比率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 90.81,
+       "peer_avg": 96.48
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "②累積欠損金比率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 669.22,
+       "peer_avg": 224.6
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "③流動比率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 29.63,
+       "peer_avg": 132.16
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "④企業債残高対事業規模比率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 154.7,
+       "peer_avg": 992.16
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "⑤経費回収率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 98.68,
+       "peer_avg": 45.55
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "⑥汚水処理原価",
+      "unit": "円/m3",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 191.55,
+       "peer_avg": 331.17
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "⑦施設利用率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 56.03,
+       "peer_avg": 45.93
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "⑧水洗化率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 97.01,
+       "peer_avg": 82.98
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "①有形固定資産減価償却率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": 24.32,
+       "peer_avg": 39.7
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "②管渠老朽化率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": null,
+       "peer_avg": null
+      },
+      "kuwana": {
+       "na": true
+      }
+     },
+     {
+      "indicator": "③管渠改善率",
+      "unit": "%",
+      "kosai": {
+       "na": true
+      },
+      "nakatsugawa": {
+       "value": null,
+       "peer_avg": null
+      },
+      "kuwana": {
+       "na": true
+      }
+     }
+    ]
+   }
+  ],
+  "kosai_bond_correction": {
+   "issue": "湖西市下水道の企業債残高対事業規模比率は分析表上0だが、決算書ベースでは残高約95.4億円が存在(比較表・検証結果表)",
+   "debt_total_yen": 9535258644,
+   "debt_ga_share_yen": 5661083000,
+   "debt_net_yen": 3874175644,
+   "sewer_fee_revenue_yen": 326299428,
+   "corrected_ratio_pct": 1187,
+   "peer_avg_pct": 1042.77,
+   "note": "補正値=一般会計負担見込額控除後の残高÷使用料収入(概算)。類似団体平均1,042.77%と同水準。スコア計算には補正値を使用(指示書の確定事項)。"
+  }
+ },
+ "timeseries": [
+  {
+   "city": "湖西市",
+   "business": "水道",
+   "indicator": "①経常収支比率(％)",
+   "R1": 120.41,
+   "R2": 119.69,
+   "R3": 116.51,
+   "R4": 115.18,
+   "R5": 111.84,
+   "avg_R3R5": 114.51
+  },
+  {
+   "city": "湖西市",
+   "business": "水道",
+   "indicator": "②累積欠損金比率(％)",
+   "R1": 0.0,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "湖西市",
+   "business": "水道",
+   "indicator": "③流動比率(％)",
+   "R1": 665.43,
+   "R2": 895.21,
+   "R3": 709.15,
+   "R4": 1079.11,
+   "R5": 993.91,
+   "avg_R3R5": 927.39
+  },
+  {
+   "city": "湖西市",
+   "business": "水道",
+   "indicator": "④企業債残高対給水収益比率(％)",
+   "R1": 54.6,
+   "R2": 48.55,
+   "R3": 36.89,
+   "R4": 46.16,
+   "R5": 48.4,
+   "avg_R3R5": 43.8167
+  },
+  {
+   "city": "湖西市",
+   "business": "水道",
+   "indicator": "⑤料金回収率(％)",
+   "R1": 117.99,
+   "R2": 113.35,
+   "R3": 114.22,
+   "R4": 112.88,
+   "R5": 109.4,
+   "avg_R3R5": 112.1667
+  },
+  {
+   "city": "湖西市",
+   "business": "水道",
+   "indicator": "⑥給水原価(円)",
+   "R1": 137.5,
+   "R2": 131.34,
+   "R3": 141.19,
+   "R4": 145.35,
+   "R5": 150.04,
+   "avg_R3R5": 145.5267
+  },
+  {
+   "city": "湖西市",
+   "business": "水道",
+   "indicator": "⑦施設利用率(％)",
+   "R1": 52.53,
+   "R2": 53.22,
+   "R3": 51.44,
+   "R4": 50.59,
+   "R5": 49.83,
+   "avg_R3R5": 50.62
+  },
+  {
+   "city": "湖西市",
+   "business": "水道",
+   "indicator": "⑧有収率(％)",
+   "R1": 90.9,
+   "R2": 91.38,
+   "R3": 95.75,
+   "R4": 92.84,
+   "R5": 92.86,
+   "avg_R3R5": 93.8167
+  },
+  {
+   "city": "湖西市",
+   "business": "水道",
+   "indicator": "①有形固定資産減価償却率(％)",
+   "R1": 50.24,
+   "R2": 51.69,
+   "R3": 52.45,
+   "R4": 52.63,
+   "R5": 53.64,
+   "avg_R3R5": 52.9067
+  },
+  {
+   "city": "湖西市",
+   "business": "水道",
+   "indicator": "②管路経年化率(％)",
+   "R1": 0.0,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 1.19,
+   "R5": 2.75,
+   "avg_R3R5": 1.3133
+  },
+  {
+   "city": "湖西市",
+   "business": "水道",
+   "indicator": "③管路更新率(％)",
+   "R1": 0.55,
+   "R2": 0.23,
+   "R3": 0.9,
+   "R4": 1.54,
+   "R5": 0.52,
+   "avg_R3R5": 0.9867
+  },
+  {
+   "city": "湖西市",
+   "business": "公共下水道",
+   "indicator": "①経常収支比率(％)",
+   "R1": 104.05,
+   "R2": 106.63,
+   "R3": 102.19,
+   "R4": 99.66,
+   "R5": 99.7,
+   "avg_R3R5": 100.5167
+  },
+  {
+   "city": "湖西市",
+   "business": "公共下水道",
+   "indicator": "②累積欠損金比率(％)",
+   "R1": 0.0,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "湖西市",
+   "business": "公共下水道",
+   "indicator": "③流動比率(％)",
+   "R1": 29.62,
+   "R2": 49.74,
+   "R3": 45.02,
+   "R4": 37.42,
+   "R5": 55.37,
+   "avg_R3R5": 45.9367
+  },
+  {
+   "city": "湖西市",
+   "business": "公共下水道",
+   "indicator": "④企業債残高対事業規模比率(％)",
+   "R1": 0.0,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "湖西市",
+   "business": "公共下水道",
+   "indicator": "⑤経費回収率(％)",
+   "R1": 76.0,
+   "R2": 87.78,
+   "R3": 87.31,
+   "R4": 87.33,
+   "R5": 87.11,
+   "avg_R3R5": 87.25
+  },
+  {
+   "city": "湖西市",
+   "business": "公共下水道",
+   "indicator": "⑥汚水処理原価(円)",
+   "R1": 164.33,
+   "R2": 162.41,
+   "R3": 163.69,
+   "R4": 164.93,
+   "R5": 166.18,
+   "avg_R3R5": 164.9333
+  },
+  {
+   "city": "湖西市",
+   "business": "公共下水道",
+   "indicator": "⑦施設利用率(％)",
+   "R1": 57.25,
+   "R2": 48.75,
+   "R3": 54.33,
+   "R4": 52.42,
+   "R5": 56.17,
+   "avg_R3R5": 54.3067
+  },
+  {
+   "city": "湖西市",
+   "business": "公共下水道",
+   "indicator": "⑧水洗化率(％)",
+   "R1": 82.03,
+   "R2": 82.77,
+   "R3": 83.12,
+   "R4": 83.16,
+   "R5": 83.52,
+   "avg_R3R5": 83.2667
+  },
+  {
+   "city": "湖西市",
+   "business": "公共下水道",
+   "indicator": "①有形固定資産減価償却率(％)",
+   "R1": 6.25,
+   "R2": 9.18,
+   "R3": 11.88,
+   "R4": 13.14,
+   "R5": 15.38,
+   "avg_R3R5": 13.4667
+  },
+  {
+   "city": "湖西市",
+   "business": "公共下水道",
+   "indicator": "②管渠老朽化率(％)",
+   "R1": 0.0,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "湖西市",
+   "business": "公共下水道",
+   "indicator": "③管渠改善率(％)",
+   "R1": 0.0,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "湖西市",
+   "business": "特環",
+   "indicator": "①経常収支比率(％)",
+   "R1": 102.77,
+   "R2": 105.43,
+   "R3": 100.99,
+   "R4": 98.71,
+   "R5": 98.92,
+   "avg_R3R5": 99.54
+  },
+  {
+   "city": "湖西市",
+   "business": "特環",
+   "indicator": "②累積欠損金比率(％)",
+   "R1": 0.0,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "湖西市",
+   "business": "特環",
+   "indicator": "③流動比率(％)",
+   "R1": 33.99,
+   "R2": 55.06,
+   "R3": 48.55,
+   "R4": 41.98,
+   "R5": 61.23,
+   "avg_R3R5": 50.5867
+  },
+  {
+   "city": "湖西市",
+   "business": "特環",
+   "indicator": "④企業債残高対事業規模比率(％)",
+   "R1": 0.0,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "湖西市",
+   "business": "特環",
+   "indicator": "⑤経費回収率(％)",
+   "R1": 76.18,
+   "R2": 87.51,
+   "R3": 86.92,
+   "R4": 87.42,
+   "R5": 87.11,
+   "avg_R3R5": 87.15
+  },
+  {
+   "city": "湖西市",
+   "business": "特環",
+   "indicator": "⑥汚水処理原価(円)",
+   "R1": 164.57,
+   "R2": 162.54,
+   "R3": 163.69,
+   "R4": 165.14,
+   "R5": 165.75,
+   "avg_R3R5": 164.86
+  },
+  {
+   "city": "湖西市",
+   "business": "特環",
+   "indicator": "⑦施設利用率(％)",
+   "R1": 24.45,
+   "R2": 64.43,
+   "R3": 68.22,
+   "R4": 70.64,
+   "R5": 77.07,
+   "avg_R3R5": 71.9767
+  },
+  {
+   "city": "湖西市",
+   "business": "特環",
+   "indicator": "⑧水洗化率(％)",
+   "R1": 84.09,
+   "R2": 84.99,
+   "R3": 84.04,
+   "R4": 84.16,
+   "R5": 84.56,
+   "avg_R3R5": 84.2533
+  },
+  {
+   "city": "湖西市",
+   "business": "特環",
+   "indicator": "①有形固定資産減価償却率(％)",
+   "R1": 6.25,
+   "R2": 9.18,
+   "R3": 11.88,
+   "R4": 21.67,
+   "R5": 23.47,
+   "avg_R3R5": 19.0067
+  },
+  {
+   "city": "湖西市",
+   "business": "特環",
+   "indicator": "②管渠老朽化率(％)",
+   "R1": 0.0,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "湖西市",
+   "business": "特環",
+   "indicator": "③管渠改善率(％)",
+   "R1": 0.0,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "中津川市",
+   "business": "水道",
+   "indicator": "①経常収支比率(％)",
+   "R1": 101.31,
+   "R2": 104.12,
+   "R3": 100.54,
+   "R4": 94.46,
+   "R5": 100.07,
+   "avg_R3R5": 98.3567
+  },
+  {
+   "city": "中津川市",
+   "business": "水道",
+   "indicator": "②累積欠損金比率(％)",
+   "R1": 0.0,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "中津川市",
+   "business": "水道",
+   "indicator": "③流動比率(％)",
+   "R1": 232.35,
+   "R2": 216.29,
+   "R3": 230.66,
+   "R4": 185.31,
+   "R5": 142.37,
+   "avg_R3R5": 186.1133
+  },
+  {
+   "city": "中津川市",
+   "business": "水道",
+   "indicator": "④企業債残高対給水収益比率(％)",
+   "R1": 179.78,
+   "R2": 171.87,
+   "R3": 168.96,
+   "R4": 189.22,
+   "R5": 192.39,
+   "avg_R3R5": 183.5233
+  },
+  {
+   "city": "中津川市",
+   "business": "水道",
+   "indicator": "⑤料金回収率(％)",
+   "R1": 96.82,
+   "R2": 99.33,
+   "R3": 95.74,
+   "R4": 87.65,
+   "R5": 87.57,
+   "avg_R3R5": 90.32
+  },
+  {
+   "city": "中津川市",
+   "business": "水道",
+   "indicator": "⑥給水原価(円)",
+   "R1": 200.93,
+   "R2": 195.17,
+   "R3": 203.71,
+   "R4": 224.06,
+   "R5": 225.52,
+   "avg_R3R5": 217.7633
+  },
+  {
+   "city": "中津川市",
+   "business": "水道",
+   "indicator": "⑦施設利用率(％)",
+   "R1": 70.38,
+   "R2": 72.14,
+   "R3": 72.51,
+   "R4": 73.72,
+   "R5": 76.75,
+   "avg_R3R5": 74.3267
+  },
+  {
+   "city": "中津川市",
+   "business": "水道",
+   "indicator": "⑧有収率(％)",
+   "R1": 73.41,
+   "R2": 72.8,
+   "R3": 71.64,
+   "R4": 63.9,
+   "R5": 66.15,
+   "avg_R3R5": 67.23
+  },
+  {
+   "city": "中津川市",
+   "business": "水道",
+   "indicator": "①有形固定資産減価償却率(％)",
+   "R1": 36.92,
+   "R2": 38.72,
+   "R3": 40.74,
+   "R4": 42.15,
+   "R5": 42.63,
+   "avg_R3R5": 41.84
+  },
+  {
+   "city": "中津川市",
+   "business": "水道",
+   "indicator": "②管路経年化率(％)",
+   "R1": 13.92,
+   "R2": 18.3,
+   "R3": 20.4,
+   "R4": 22.31,
+   "R5": 21.29,
+   "avg_R3R5": 21.3333
+  },
+  {
+   "city": "中津川市",
+   "business": "水道",
+   "indicator": "③管路更新率(％)",
+   "R1": 0.63,
+   "R2": 0.84,
+   "R3": 0.56,
+   "R4": 0.5,
+   "R5": 0.71,
+   "avg_R3R5": 0.59
+  },
+  {
+   "city": "中津川市",
+   "business": "公共下水道",
+   "indicator": "①経常収支比率(％)",
+   "R1": null,
+   "R2": 103.36,
+   "R3": 99.98,
+   "R4": 116.1,
+   "R5": 105.97,
+   "avg_R3R5": 107.35
+  },
+  {
+   "city": "中津川市",
+   "business": "公共下水道",
+   "indicator": "②累積欠損金比率(％)",
+   "R1": null,
+   "R2": 14.51,
+   "R3": 14.69,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 4.8967
+  },
+  {
+   "city": "中津川市",
+   "business": "公共下水道",
+   "indicator": "③流動比率(％)",
+   "R1": null,
+   "R2": 37.28,
+   "R3": 19.88,
+   "R4": 45.63,
+   "R5": 61.47,
+   "avg_R3R5": 42.3267
+  },
+  {
+   "city": "中津川市",
+   "business": "公共下水道",
+   "indicator": "④企業債残高対事業規模比率(％)",
+   "R1": null,
+   "R2": 412.35,
+   "R3": 381.97,
+   "R4": 105.53,
+   "R5": 315.11,
+   "avg_R3R5": 267.5367
+  },
+  {
+   "city": "中津川市",
+   "business": "公共下水道",
+   "indicator": "⑤経費回収率(％)",
+   "R1": null,
+   "R2": 105.05,
+   "R3": 100.36,
+   "R4": 116.34,
+   "R5": 93.46,
+   "avg_R3R5": 103.3867
+  },
+  {
+   "city": "中津川市",
+   "business": "公共下水道",
+   "indicator": "⑥汚水処理原価(円)",
+   "R1": null,
+   "R2": 182.71,
+   "R3": 191.61,
+   "R4": 166.56,
+   "R5": 208.82,
+   "avg_R3R5": 188.9967
+  },
+  {
+   "city": "中津川市",
+   "business": "公共下水道",
+   "indicator": "⑦施設利用率(％)",
+   "R1": null,
+   "R2": 47.17,
+   "R3": 49.99,
+   "R4": 48.36,
+   "R5": 52.53,
+   "avg_R3R5": 50.2933
+  },
+  {
+   "city": "中津川市",
+   "business": "公共下水道",
+   "indicator": "⑧水洗化率(％)",
+   "R1": null,
+   "R2": 84.5,
+   "R3": 84.71,
+   "R4": 86.39,
+   "R5": 86.48,
+   "avg_R3R5": 85.86
+  },
+  {
+   "city": "中津川市",
+   "business": "公共下水道",
+   "indicator": "①有形固定資産減価償却率(％)",
+   "R1": null,
+   "R2": 3.68,
+   "R3": 7.32,
+   "R4": 10.76,
+   "R5": 14.09,
+   "avg_R3R5": 10.7233
+  },
+  {
+   "city": "中津川市",
+   "business": "公共下水道",
+   "indicator": "②管渠老朽化率(％)",
+   "R1": null,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "中津川市",
+   "business": "公共下水道",
+   "indicator": "③管渠改善率(％)",
+   "R1": null,
+   "R2": 0.54,
+   "R3": 0.63,
+   "R4": 0.0,
+   "R5": 0.21,
+   "avg_R3R5": 0.28
+  },
+  {
+   "city": "中津川市",
+   "business": "特環",
+   "indicator": "①経常収支比率(％)",
+   "R1": null,
+   "R2": 122.62,
+   "R3": 108.01,
+   "R4": 94.6,
+   "R5": 90.92,
+   "avg_R3R5": 97.8433
+  },
+  {
+   "city": "中津川市",
+   "business": "特環",
+   "indicator": "②累積欠損金比率(％)",
+   "R1": null,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "中津川市",
+   "business": "特環",
+   "indicator": "③流動比率(％)",
+   "R1": null,
+   "R2": 28.9,
+   "R3": 54.12,
+   "R4": 63.86,
+   "R5": 74.49,
+   "avg_R3R5": 64.1567
+  },
+  {
+   "city": "中津川市",
+   "business": "特環",
+   "indicator": "④企業債残高対事業規模比率(％)",
+   "R1": null,
+   "R2": 210.67,
+   "R3": 225.43,
+   "R4": 646.25,
+   "R5": 1508.56,
+   "avg_R3R5": 793.4133
+  },
+  {
+   "city": "中津川市",
+   "business": "特環",
+   "indicator": "⑤経費回収率(％)",
+   "R1": null,
+   "R2": 122.45,
+   "R3": 127.74,
+   "R4": 97.07,
+   "R5": 103.04,
+   "avg_R3R5": 109.2833
+  },
+  {
+   "city": "中津川市",
+   "business": "特環",
+   "indicator": "⑥汚水処理原価(円)",
+   "R1": null,
+   "R2": 154.08,
+   "R3": 148.56,
+   "R4": 196.06,
+   "R5": 185.56,
+   "avg_R3R5": 176.7267
+  },
+  {
+   "city": "中津川市",
+   "business": "特環",
+   "indicator": "⑦施設利用率(％)",
+   "R1": null,
+   "R2": 46.94,
+   "R3": 49.48,
+   "R4": 47.97,
+   "R5": 48.49,
+   "avg_R3R5": 48.6467
+  },
+  {
+   "city": "中津川市",
+   "business": "特環",
+   "indicator": "⑧水洗化率(％)",
+   "R1": null,
+   "R2": 90.62,
+   "R3": 91.04,
+   "R4": 96.78,
+   "R5": 92.09,
+   "avg_R3R5": 93.3033
+  },
+  {
+   "city": "中津川市",
+   "business": "特環",
+   "indicator": "①有形固定資産減価償却率(％)",
+   "R1": null,
+   "R2": 4.45,
+   "R3": 8.9,
+   "R4": 12.5,
+   "R5": 15.88,
+   "avg_R3R5": 12.4267
+  },
+  {
+   "city": "中津川市",
+   "business": "特環",
+   "indicator": "②管渠老朽化率(％)",
+   "R1": null,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "中津川市",
+   "business": "特環",
+   "indicator": "③管渠改善率(％)",
+   "R1": null,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "中津川市",
+   "business": "農集排",
+   "indicator": "①経常収支比率(％)",
+   "R1": null,
+   "R2": 101.86,
+   "R3": 102.7,
+   "R4": 100.41,
+   "R5": 90.74,
+   "avg_R3R5": 97.95
+  },
+  {
+   "city": "中津川市",
+   "business": "農集排",
+   "indicator": "②累積欠損金比率(％)",
+   "R1": null,
+   "R2": 1.59,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 25.29,
+   "avg_R3R5": 8.43
+  },
+  {
+   "city": "中津川市",
+   "business": "農集排",
+   "indicator": "③流動比率(％)",
+   "R1": null,
+   "R2": 6.04,
+   "R3": 28.09,
+   "R4": 44.81,
+   "R5": 44.72,
+   "avg_R3R5": 39.2067
+  },
+  {
+   "city": "中津川市",
+   "business": "農集排",
+   "indicator": "④企業債残高対事業規模比率(％)",
+   "R1": null,
+   "R2": 0.0,
+   "R3": 69.72,
+   "R4": 139.7,
+   "R5": 38.04,
+   "avg_R3R5": 82.4867
+  },
+  {
+   "city": "中津川市",
+   "business": "農集排",
+   "indicator": "⑤経費回収率(％)",
+   "R1": null,
+   "R2": 105.65,
+   "R3": 94.27,
+   "R4": 76.85,
+   "R5": 84.82,
+   "avg_R3R5": 85.3133
+  },
+  {
+   "city": "中津川市",
+   "business": "農集排",
+   "indicator": "⑥汚水処理原価(円)",
+   "R1": null,
+   "R2": 176.57,
+   "R3": 198.6,
+   "R4": 243.99,
+   "R5": 222.09,
+   "avg_R3R5": 221.56
+  },
+  {
+   "city": "中津川市",
+   "business": "農集排",
+   "indicator": "⑦施設利用率(％)",
+   "R1": null,
+   "R2": 56.23,
+   "R3": 55.42,
+   "R4": 54.35,
+   "R5": 53.0,
+   "avg_R3R5": 54.2567
+  },
+  {
+   "city": "中津川市",
+   "business": "農集排",
+   "indicator": "⑧水洗化率(％)",
+   "R1": null,
+   "R2": 84.31,
+   "R3": 84.41,
+   "R4": 85.7,
+   "R5": 86.62,
+   "avg_R3R5": 85.5767
+  },
+  {
+   "city": "中津川市",
+   "business": "農集排",
+   "indicator": "①有形固定資産減価償却率(％)",
+   "R1": null,
+   "R2": 3.85,
+   "R3": 7.71,
+   "R4": 11.16,
+   "R5": 14.52,
+   "avg_R3R5": 11.13
+  },
+  {
+   "city": "中津川市",
+   "business": "農集排",
+   "indicator": "②管渠老朽化率(％)",
+   "R1": null,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "中津川市",
+   "business": "農集排",
+   "indicator": "③管渠改善率(％)",
+   "R1": null,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.15,
+   "avg_R3R5": 0.05
+  },
+  {
+   "city": "中津川市",
+   "business": "個別排水",
+   "indicator": "①経常収支比率(％)",
+   "R1": null,
+   "R2": 98.21,
+   "R3": 95.82,
+   "R4": 87.17,
+   "R5": 90.81,
+   "avg_R3R5": 91.2667
+  },
+  {
+   "city": "中津川市",
+   "business": "個別排水",
+   "indicator": "②累積欠損金比率(％)",
+   "R1": null,
+   "R2": 709.39,
+   "R3": 682.74,
+   "R4": 715.61,
+   "R5": 669.22,
+   "avg_R3R5": 689.19
+  },
+  {
+   "city": "中津川市",
+   "business": "個別排水",
+   "indicator": "③流動比率(％)",
+   "R1": null,
+   "R2": 73.94,
+   "R3": 70.37,
+   "R4": 59.07,
+   "R5": 29.63,
+   "avg_R3R5": 53.0233
+  },
+  {
+   "city": "中津川市",
+   "business": "個別排水",
+   "indicator": "④企業債残高対事業規模比率(％)",
+   "R1": null,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 154.7,
+   "avg_R3R5": 51.5667
+  },
+  {
+   "city": "中津川市",
+   "business": "個別排水",
+   "indicator": "⑤経費回収率(％)",
+   "R1": null,
+   "R2": 91.32,
+   "R3": 100.78,
+   "R4": 91.46,
+   "R5": 98.68,
+   "avg_R3R5": 96.9733
+  },
+  {
+   "city": "中津川市",
+   "business": "個別排水",
+   "indicator": "⑥汚水処理原価(円)",
+   "R1": null,
+   "R2": 201.67,
+   "R3": 184.36,
+   "R4": 206.45,
+   "R5": 191.55,
+   "avg_R3R5": 194.12
+  },
+  {
+   "city": "中津川市",
+   "business": "個別排水",
+   "indicator": "⑦施設利用率(％)",
+   "R1": null,
+   "R2": 55.17,
+   "R3": 56.03,
+   "R4": 52.59,
+   "R5": 56.03,
+   "avg_R3R5": 54.8833
+  },
+  {
+   "city": "中津川市",
+   "business": "個別排水",
+   "indicator": "⑧水洗化率(％)",
+   "R1": null,
+   "R2": 96.44,
+   "R3": 96.44,
+   "R4": 96.44,
+   "R5": 97.01,
+   "avg_R3R5": 96.63
+  },
+  {
+   "city": "中津川市",
+   "business": "個別排水",
+   "indicator": "①有形固定資産減価償却率(％)",
+   "R1": null,
+   "R2": 8.06,
+   "R3": 16.11,
+   "R4": 24.17,
+   "R5": 24.32,
+   "avg_R3R5": 21.5333
+  },
+  {
+   "city": "中津川市",
+   "business": "個別排水",
+   "indicator": "②管渠老朽化率(％)",
+   "R1": null,
+   "R2": null,
+   "R3": null,
+   "R4": null,
+   "R5": null,
+   "avg_R3R5": null
+  },
+  {
+   "city": "中津川市",
+   "business": "個別排水",
+   "indicator": "③管渠改善率(％)",
+   "R1": null,
+   "R2": null,
+   "R3": null,
+   "R4": null,
+   "R5": null,
+   "avg_R3R5": null
+  },
+  {
+   "city": "桑名市",
+   "business": "水道",
+   "indicator": "経常収支比率(％)",
+   "R1": null,
+   "R2": 107.63,
+   "R3": 106.41,
+   "R4": 101.93,
+   "R5": 109.77,
+   "avg_R3R5": 106.0367
+  },
+  {
+   "city": "桑名市",
+   "business": "水道",
+   "indicator": "累積欠損金比率(％)",
+   "R1": null,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "桑名市",
+   "business": "水道",
+   "indicator": "流動比率(％)",
+   "R1": null,
+   "R2": 329.97,
+   "R3": 271.61,
+   "R4": 386.24,
+   "R5": 402.27,
+   "avg_R3R5": 353.3733
+  },
+  {
+   "city": "桑名市",
+   "business": "水道",
+   "indicator": "企業債残高対給水収益比率(％)",
+   "R1": null,
+   "R2": 304.67,
+   "R3": 303.8,
+   "R4": 312.46,
+   "R5": 327.16,
+   "avg_R3R5": 314.4733
+  },
+  {
+   "city": "桑名市",
+   "business": "水道",
+   "indicator": "料金回収率(％)",
+   "R1": null,
+   "R2": 92.47,
+   "R3": 103.09,
+   "R4": 97.38,
+   "R5": 105.84,
+   "avg_R3R5": 102.1033
+  },
+  {
+   "city": "桑名市",
+   "business": "水道",
+   "indicator": "給水原価(円)",
+   "R1": null,
+   "R2": 133.02,
+   "R3": 133.64,
+   "R4": 143.41,
+   "R5": 143.39,
+   "avg_R3R5": 140.1467
+  },
+  {
+   "city": "桑名市",
+   "business": "水道",
+   "indicator": "施設利用率(％)",
+   "R1": null,
+   "R2": 58.26,
+   "R3": 57.88,
+   "R4": 58.48,
+   "R5": 58.88,
+   "avg_R3R5": 58.4133
+  },
+  {
+   "city": "桑名市",
+   "business": "水道",
+   "indicator": "有収率(％)",
+   "R1": null,
+   "R2": 84.21,
+   "R3": 84.01,
+   "R4": 81.78,
+   "R5": 80.01,
+   "avg_R3R5": 81.9333
+  },
+  {
+   "city": "桑名市",
+   "business": "水道",
+   "indicator": "有形固定資産減価償却率(％)",
+   "R1": null,
+   "R2": 57.13,
+   "R3": 57.02,
+   "R4": 58.21,
+   "R5": 58.24,
+   "avg_R3R5": 57.8233
+  },
+  {
+   "city": "桑名市",
+   "business": "水道",
+   "indicator": "管路経年化率(％)",
+   "R1": null,
+   "R2": 32.54,
+   "R3": 33.34,
+   "R4": 34.08,
+   "R5": 36.09,
+   "avg_R3R5": 34.5033
+  },
+  {
+   "city": "桑名市",
+   "business": "水道",
+   "indicator": "管路更新率(％)",
+   "R1": null,
+   "R2": 1.59,
+   "R3": 0.87,
+   "R4": 0.9,
+   "R5": 0.45,
+   "avg_R3R5": 0.74
+  },
+  {
+   "city": "桑名市",
+   "business": "公共下水道",
+   "indicator": "経常収支比率(％)",
+   "R1": null,
+   "R2": 110.66,
+   "R3": 112.11,
+   "R4": 111.81,
+   "R5": 109.49,
+   "avg_R3R5": 111.1367
+  },
+  {
+   "city": "桑名市",
+   "business": "公共下水道",
+   "indicator": "累積欠損金比率(％)",
+   "R1": null,
+   "R2": 0.0,
+   "R3": 0.0,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0
+  },
+  {
+   "city": "桑名市",
+   "business": "公共下水道",
+   "indicator": "流動比率(％)",
+   "R1": null,
+   "R2": 52.78,
+   "R3": 64.23,
+   "R4": 59.81,
+   "R5": 67.78,
+   "avg_R3R5": 63.94
+  },
+  {
+   "city": "桑名市",
+   "business": "公共下水道",
+   "indicator": "企業債残高対事業規模比率(％)",
+   "R1": null,
+   "R2": 895.78,
+   "R3": 875.31,
+   "R4": 840.87,
+   "R5": 789.7,
+   "avg_R3R5": 835.2933
+  },
+  {
+   "city": "桑名市",
+   "business": "公共下水道",
+   "indicator": "経費回収率(％)",
+   "R1": null,
+   "R2": 114.91,
+   "R3": 118.95,
+   "R4": 119.94,
+   "R5": 113.6,
+   "avg_R3R5": 117.4967
+  },
+  {
+   "city": "桑名市",
+   "business": "公共下水道",
+   "indicator": "汚水処理原価(円)",
+   "R1": null,
+   "R2": 171.02,
+   "R3": 164.53,
+   "R4": 163.28,
+   "R5": 172.45,
+   "avg_R3R5": 166.7533
+  },
+  {
+   "city": "桑名市",
+   "business": "公共下水道",
+   "indicator": "施設利用率(％)",
+   "R1": null,
+   "R2": 412.49,
+   "R3": 414.66,
+   "R4": 68.54,
+   "R5": 63.88,
+   "avg_R3R5": 182.36
+  },
+  {
+   "city": "桑名市",
+   "business": "公共下水道",
+   "indicator": "水洗化率(％)",
+   "R1": null,
+   "R2": 95.01,
+   "R3": 94.44,
+   "R4": 93.53,
+   "R5": 93.12,
+   "avg_R3R5": 93.6967
+  },
+  {
+   "city": "桑名市",
+   "business": "公共下水道",
+   "indicator": "有形固定資産減価償却率(％)",
+   "R1": null,
+   "R2": 28.69,
+   "R3": 30.65,
+   "R4": 32.59,
+   "R5": 34.46,
+   "avg_R3R5": 32.5667
+  },
+  {
+   "city": "桑名市",
+   "business": "公共下水道",
+   "indicator": "管渠老朽化率(％)",
+   "R1": null,
+   "R2": 0.32,
+   "R3": 0.47,
+   "R4": 0.57,
+   "R5": 0.72,
+   "avg_R3R5": 0.5867
+  },
+  {
+   "city": "桑名市",
+   "business": "公共下水道",
+   "indicator": "管渠改善率(％)",
+   "R1": null,
+   "R2": 0.0,
+   "R3": 0.01,
+   "R4": 0.0,
+   "R5": 0.0,
+   "avg_R3R5": 0.0033
+  }
+ ],
+ "notes": [
+  {
+   "type": "基準年度",
+   "text": "全指標を令和5年度決算に統一（指標定義書3.1）。桑名の基本情報欄はR6分析表記載値のため(R6:)表記で参考掲載し、スコア計算には不使用。"
+  },
+  {
+   "type": "出典1",
+   "text": "湖西市：市公表 経営比較分析表（令和5年度決算）Excel 3ファイル（18kosai_suido/kokyo/tokkan_2023.xlsx）ユーザー提供 2026-07-20"
+  },
+  {
+   "type": "出典2",
+   "text": "中津川市：市公表 経営比較分析表（令和5年度決算）Excel 5ファイル（suidou/koukyo/tokkan/nousyu/kobetu_2023_212067_46_*.xlsx）ユーザー提供 2026-07-20"
+  },
+  {
+   "type": "出典3",
+   "text": "桑名市：市公表 経営比較分析表（令和6年度決算）PDF（suido.pdf/gesui.pdf/noshu.pdf、city.kuwana.lg.jp）のR05列より転記。2026-07-20取得"
+  },
+  {
+   "type": "検証済1",
+   "text": "湖西市 公共下水道の「企業債残高対事業規模比率0」は誤解を招く報告値と判明。R5決算書の貸借対照表では企業債残高95.4億円（固定87.6億＋流動7.8億）。同比率の分子は一般会計負担見込額を控除する定義であり、市の決算統計上の報告が控除後ゼロ相当となっている可能性があるが、決算書注記の一般会計負担見込は56.6億円（59%）であり控除後でも約38.7億円が残る。受入能力評価には決算書ベースの補正値（下水道_R5比較シート末尾の検証結果表）を用いる。出典：湖西市公共下水道事業会計決算書（令和5年度）2026-07-20取得"
+  },
+  {
+   "type": "要検証2",
+   "text": "中津川市 公共下水道の同比率がR3:382→R4:106→R5:315と大変動。分母（事業規模＝料金収入等）の算定要因を要確認。"
+  },
+  {
+   "type": "構造フラグ1",
+   "text": "中津川市水道：H29に旧簡易水道23事業等を統合。給水人口密度296人/km2（湖西1,008・桑名1,010）。有収率66.15の主因は構造要因の可能性大（経営の巧拙と分離評価）。"
+  },
+  {
+   "type": "構造フラグ2",
+   "text": "桑名市水道：人口密度は高いが管路経年化率36.09（類似平均24.49）・有収率80.01。老朽化起因の漏水が示唆され、中津川と悪化メカニズムが異なる。"
+  },
+  {
+   "type": "構造フラグ3",
+   "text": "桑名市 公共下水道の施設利用率はR4に算定方法修正（単独＋流域関連の合算に変更）。R2-R3値はR4以降と非連続。"
+  },
+  {
+   "type": "注記1",
+   "text": "中津川市 個別排水処理は累積欠損金比率669%・自己資本構成比率▲144.64%だが処理区域内人口201人の極小事業。市全体評価は規模加重で処理。"
+  },
+  {
+   "type": "注記2",
+   "text": "特環の類似団体平均（D2）は経費回収率70.71等と弱く、湖西・中津川の特環が平均比で良く見える。母集団の弱さによる相対評価の歪みに留意。"
+  },
+  {
+   "type": "注記3",
+   "text": "桑名市はR1値なし（R6分析表の掲載期間がR2-R6のため）。3か年平均（R3-R5）には影響なし。"
+  },
+  {
+   "type": "注記4",
+   "text": "湖西市下水道は特環を含め料金・原価がほぼ同一値であり、公共下水道事業会計として一体経理のうえ分析表上で按分報告されている可能性が高い。特環の企業債0も同様に補正対象。"
+  },
+  {
+   "type": "出典4",
+   "text": "①一般会計：総務省「令和5年度市町村決算カード」県別Excel（岐阜000998962／静岡000998964／愛知000998966／三重000998968／長野000998960）ユーザー提供 2026-07-20。5県237団体分を「決算カード5県DB_R5」シートに全件搭載。"
+  },
+  {
+   "type": "注記5",
+   "text": "①の類型平均（Ⅱ-2:n=34／Ⅲ-2:n=17）は5県内平均の暫定値。中津川市の将来負担比率「-」は将来負担額が充当可能財源等を下回るため算定されないもので、健全を意味する。"
+  }
+ ]
+}
