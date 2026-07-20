@@ -103,9 +103,21 @@ details.histbox summary{cursor:pointer; font-size:12px; color:var(--grey);}
   <span class="brand">MEF</span>
   <span class="brand-sub">市町村評価共通フレームワーク｜包括委託・コンセッション 提案類型分類</span>
   <span class="badge">基準:令和5年度決算</span>
-  <span class="auth-area" id="authStatus">未ログイン(閲覧はどなたでも可・入力機能はログイン後)</span>
+  <span class="auth-area"><span id="authStatus"></span> <button class="btn" id="btnHeadLogout" style="display:none; font-size:12px; padding:3px 10px; margin-left:8px">ログアウト</button></span>
 </header>
-<nav id="nav">
+<div id="loginGate" style="max-width:420px; margin:60px auto; padding:0 16px;">
+  <h2 style="border-left:5px solid var(--red)">ログイン</h2>
+  <p class="lead">MEFは招待ユーザー専用です。招待メールで設定したメールアドレスとパスワードでログインしてください。</p>
+  <div id="gateMsg" class="note-box" style="display:none"></div>
+  <div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">
+    <input type="email" id="gateEmail" placeholder="メールアドレス" autocomplete="username">
+    <input type="password" id="gatePass" placeholder="パスワード" autocomplete="current-password">
+    <button class="btn primary" id="gateLogin" style="padding:10px">ログイン</button>
+    <span class="savemsg" id="gateErr"></span>
+  </div>
+  <p class="legend" style="margin-top:16px">①②の統計データは公表資料由来ですが、本アプリは運用上、全機能をログイン後に提供します。機微情報(③④・重み設定)は従来どおりSupabase認証の背後で保護されています。</p>
+</div>
+<nav id="nav" style="display:none">
   <button data-tab="gen" class="active">① 一般会計</button>
   <button data-tab="water">② 水道</button>
   <button data-tab="sewer">② 下水道</button>
@@ -115,7 +127,7 @@ details.histbox summary{cursor:pointer; font-size:12px; color:var(--grey);}
   <button data-tab="notes">注記・出典</button>
   <button data-tab="diag">診断・ログイン</button>
 </nav>
-<main>
+<main id="appMain" style="display:none">
   <div id="loading">静的データを読み込んでいます…</div>
 
   <section id="pane-gen" class="tab-pane"></section>
@@ -448,29 +460,24 @@ function renderDiag(){
   +'<button class="btn" id="btnDiag1">実行</button><div class="res" id="diag1"></div></div>'
   +'<div class="diag-item"><b>2. サインアップ拒否テスト</b> — ダミーメールでの自己登録が「Signups not allowed」で拒否されることを確認(招待制の生命線・チェックリストC-1の実挙動確認)<br>'
   +'<button class="btn" id="btnDiag2">実行</button><div class="res" id="diag2"></div></div>'
-  +'<div class="diag-item"><b>3. ログイン(招待ユーザー)</b><br>'
-  +'<span id="loginForm"><input type="email" id="inEmail" placeholder="メールアドレス" autocomplete="username"> '
-  +'<input type="password" id="inPass" placeholder="パスワード" autocomplete="current-password"> '
-  +'<button class="btn primary" id="btnLogin">ログイン</button></span> '
-  +'<button class="btn" id="btnLogout" style="display:none">ログアウト</button>'
-  +'<div class="res" id="diag3"></div></div>'
+  +'<div class="diag-item"><b>3. ログイン状態</b> — ログインは入口画面で行います(ログアウトは画面右上)<br><div class="res" id="diag3"></div></div>'
   +'<div class="diag-item"><b>4. 認証後読取テスト</b> — ログイン状態でデフォルト重みプリセット(定義書8章)が読めることを確認<br>'
   +'<button class="btn" id="btnDiag4">実行</button><div class="res" id="diag4"></div></div>';
 
   const d0 = document.getElementById('diag0');
   if (typeof supabase === 'undefined'){
-    d0.textContent = 'supabase-jsライブラリ(CDN)の読込に失敗しました。通信環境を確認して再読込してください。静的ダッシュボードは影響なく閲覧できます。';
+    d0.textContent = 'supabase-jsライブラリ(CDN)の読込に失敗しました。';
     d0.className='res warn';
   } else if (typeof MEF_CONFIG === 'undefined' || !MEF_CONFIG.SUPABASE_URL || MEF_CONFIG.SUPABASE_URL.indexOf('xxxx')>=0){
-    d0.textContent = '未設定または雛形のまま:config.js に Project URL と Publishable key を記入してください。静的ダッシュボードは接続設定なしでも動作します。';
+    d0.textContent = '未設定または雛形のまま:config.js に Project URL と Publishable key を記入してください。';
     d0.className='res warn';
   } else {
     d0.textContent = '読込済:'+MEF_CONFIG.SUPABASE_URL;
     d0.className='res pass';
-    sb = supabase.createClient(MEF_CONFIG.SUPABASE_URL, MEF_CONFIG.SUPABASE_ANON_KEY);
-    sb.auth.getSession().then(({data})=>{ session=data.session; updateAuthUi(); });
-    sb.auth.onAuthStateChange((_e,s)=>{ session=s; updateAuthUi(); });
   }
+  const d3 = document.getElementById('diag3');
+  d3.textContent = session? ('ログイン中: '+(session.user?.email||'')) : '未ログイン';
+  d3.className = session? 'res pass':'res warn';
 
   document.getElementById('btnDiag1').addEventListener('click', async ()=>{
     const out = document.getElementById('diag1'); out.textContent='実行中…'; out.className='res';
@@ -514,20 +521,6 @@ function renderDiag(){
     }catch(e){ out.textContent='実行エラー: '+e.message; out.className='res warn'; }
   });
 
-  document.getElementById('btnLogin').addEventListener('click', async ()=>{
-    const out = document.getElementById('diag3'); out.textContent='ログイン中…'; out.className='res';
-    if (!sb){ out.textContent='config.js未設定のため実行できません'; out.className='res warn'; return; }
-    const email = document.getElementById('inEmail').value.trim();
-    const pass  = document.getElementById('inPass').value;
-    const {error} = await sb.auth.signInWithPassword({email, password:pass});
-    if (error){ out.textContent='ログイン失敗: '+error.message; out.className='res fail'; }
-    else { out.textContent='ログイン成功'; out.className='res pass'; }
-  });
-  document.getElementById('btnLogout').addEventListener('click', async ()=>{
-    if (sb) await sb.auth.signOut();
-    document.getElementById('diag3').textContent='ログアウトしました';
-  });
-
   document.getElementById('btnDiag4').addEventListener('click', async ()=>{
     const out = document.getElementById('diag4'); out.textContent='実行中…'; out.className='res';
     if (!sb){ out.textContent='config.js未設定のため実行できません'; out.className='res warn'; return; }
@@ -544,20 +537,21 @@ function renderDiag(){
 }
 function updateAuthUi(){
   const st = document.getElementById('authStatus');
-  const lf = document.getElementById('loginForm');
-  const lo = document.getElementById('btnLogout');
+  const lo = document.getElementById('btnHeadLogout');
   if (session){
     st.textContent = 'ログイン中: '+(session.user?.email||'');
-    if (lf) lf.style.display='none';
-    if (lo) lo.style.display='inline-block';
+    lo.style.display='inline-block';
   } else {
-    st.textContent = '未ログイン(閲覧はどなたでも可・入力機能はログイン後)';
-    if (lf) lf.style.display='inline';
-    if (lo) lo.style.display='none';
+    st.textContent = '';
+    lo.style.display='none';
   }
   const qp = document.getElementById('pane-qual');
   if (qp && qp.classList.contains('show')) renderQual();
 }
+document.getElementById('btnHeadLogout').addEventListener('click', async ()=>{
+  if (sb) await sb.auth.signOut();
+  appStarted=false; // 再ログイン時に再初期化
+});
 
 /* ---------- ③④ 入力(定義書6・7章 アンカー選択式/追記専用履歴) ---------- */
 const QUAL_KEYS = {kosai:"静岡県|湖西市", nakatsugawa:"岐阜県|中津川市", kuwana:"三重県|桑名市"};
@@ -717,7 +711,7 @@ async function cancelQual(id){
 }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 // 内部検証フック(UIからは不可視。実データには影響しない)
-window.__mefTest = { setSb:(x)=>{sb=x;}, setSession:(s)=>{session=s;}, renderQual:()=>renderQual(), renderMatrix:()=>renderMatrix(), computeAll:(w,t1,t2,q)=>computeAll(w,t1,t2,q), defW:()=>defaultWeightsNum() };
+window.__mefTest = { setSb:(x)=>{sb=x;}, setSession:(s)=>{session=s;}, renderQual:()=>renderQual(), renderMatrix:()=>renderMatrix(), computeAll:(w,t1,t2,q)=>computeAll(w,t1,t2,q), defW:()=>defaultWeightsNum(), route:()=>route() };
 
 /* ---------- マトリクス・感度分析(定義書2章・8章) ---------- */
 const QUAD_NAMES = {
@@ -1112,20 +1106,64 @@ document.getElementById('nav').addEventListener('click', e=>{
   if (e.target.dataset.tab==='matrix') renderMatrix();
 });
 
-fetch('data/mef_static_v1.json')
-  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(json=>{
-    D = json;
-    document.getElementById('loading').style.display='none';
-    renderGen(); renderWater(); renderSewer(); renderTs(); renderNotes(); renderDiag();
-    document.getElementById('pane-gen').classList.add('show');
-  })
-  .catch(err=>{
-    document.getElementById('loading').innerHTML =
-      '<div class="note-box"><b>静的データの読込に失敗しました:</b> '+err.message
-      +'<br>リポジトリの data/mef_static_v1.json が配置されているか、URLのパス(リポジトリ直下に001_mef.htmlとdata/フォルダ)をご確認ください。</div>';
-    renderDiag();
-  });
+/* ---------- 起動: 認証ファースト(入口ゲート) ---------- */
+let appStarted = false;
+function gateError(msg){
+  const g=document.getElementById('gateMsg');
+  g.style.display='block'; g.innerHTML=msg;
+  document.getElementById('gateLogin').disabled=true;
+}
+function route(){
+  const gate=document.getElementById('loginGate');
+  const nav=document.getElementById('nav');
+  const main=document.getElementById('appMain');
+  if (session){
+    gate.style.display='none'; nav.style.display='flex'; main.style.display='block';
+    if (!appStarted){ appStarted=true; loadStatic(); }
+  } else {
+    gate.style.display='block'; nav.style.display='none'; main.style.display='none';
+  }
+  updateAuthUi();
+}
+function initAuth(){
+  if (typeof supabase === 'undefined'){
+    gateError('supabase-jsライブラリ(CDN)の読込に失敗しました。通信環境を確認してページを再読込してください。'); return;
+  }
+  if (typeof MEF_CONFIG === 'undefined' || !MEF_CONFIG.SUPABASE_URL || MEF_CONFIG.SUPABASE_URL.indexOf('xxxx')>=0){
+    gateError('接続設定(config.js)が未設定または雛形のままです。リポジトリの config.js に Project URL と Publishable key を記入してください。'); return;
+  }
+  sb = supabase.createClient(MEF_CONFIG.SUPABASE_URL, MEF_CONFIG.SUPABASE_ANON_KEY);
+  sb.auth.getSession().then(({data})=>{ session=data.session; route(); });
+  sb.auth.onAuthStateChange((_e,s)=>{ session=s; route(); });
+  document.getElementById('gateLogin').addEventListener('click', gateSubmit);
+  document.getElementById('gatePass').addEventListener('keydown', e=>{ if(e.key==='Enter') gateSubmit(); });
+}
+async function gateSubmit(){
+  const err=document.getElementById('gateErr');
+  err.textContent='ログイン中…'; err.className='savemsg';
+  const {error} = await sb.auth.signInWithPassword({
+    email: document.getElementById('gateEmail').value.trim(),
+    password: document.getElementById('gatePass').value });
+  if (error){ err.textContent='ログイン失敗: '+error.message; err.className='savemsg err'; }
+  else { err.textContent=''; }
+}
+function loadStatic(){
+  fetch('data/mef_static_v1.json')
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(json=>{
+      D = json;
+      document.getElementById('loading').style.display='none';
+      renderGen(); renderWater(); renderSewer(); renderTs(); renderNotes(); renderDiag();
+      document.getElementById('pane-gen').classList.add('show');
+    })
+    .catch(err=>{
+      document.getElementById('loading').innerHTML =
+        '<div class="note-box"><b>静的データの読込に失敗しました:</b> '+esc(err.message)
+        +'<br>リポジトリの data/mef_static_v1.json が配置されているか、URLのパスをご確認ください。</div>';
+      renderDiag();
+    });
+}
+initAuth();
 </script>
 </body>
 </html>
