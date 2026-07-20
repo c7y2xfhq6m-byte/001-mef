@@ -1180,6 +1180,7 @@ function addedComponents(a){
 const BIZ_LIST = ["水道","公共下水道","特定環境保全公共下水道","農業集落排水","個別排水処理"];
 let ADDED = [];       // 追加団体の統合構造
 let KESSAN = null;    // 決算カード237団体(遅延読込)
+let _loadAddedInflight = null; // 同時実行ガード(列二重表示バグ対策)
 async function loadKessan(){
   if (KESSAN) return KESSAN;
   const r = await fetch('data/kessan_card_5ken_R5.json');
@@ -1201,13 +1202,19 @@ function genBaseline(muniType, field){
   return {avg: vals.length? vals.reduce((a,b)=>a+b,0)/vals.length : null, n:pool.length, fallback};
 }
 async function loadAdded(){
+  if (_loadAddedInflight) return _loadAddedInflight;   // 実行中なら同じ結果を待つ
+  _loadAddedInflight = _loadAddedImpl();
+  try { return await _loadAddedInflight; }
+  finally { _loadAddedInflight = null; }
+}
+async function _loadAddedImpl(){
   if (!sb || !session){ ADDED=[]; return; }
   const {data:mun, error:e1} = await sb.from('municipalities')
     .select('municipality_key,prefecture,name,muni_type,similar_groups,is_deleted,created_at')
     .eq('is_deleted', false).order('created_at');
   if (e1) throw new Error(e1.message);
-  ADDED = [];
-  if (!mun || !mun.length) return;
+  const built = [];
+  if (!mun || !mun.length){ ADDED = built; return; }
   const {data:ms, error:e2} = await sb.from('measurements')
     .select('municipality_key,axis,business,indicator,fiscal_year,value,series,is_deleted,created_at,source')
     .eq('is_deleted', false).order('created_at', {ascending:false});
@@ -1215,6 +1222,7 @@ async function loadAdded(){
   const need5ken = mun.some(m=>KESSAN===null);
   try{ await loadKessan(); }catch(err){/* ①は欠測表示にフォールバック */}
   mun.forEach(m=>{
+    if (built.some(x=>x.key===m.municipality_key)) return; // 重複防御
     const rows = (ms||[]).filter(r=>r.municipality_key===m.municipality_key);
     // 有効値: (axis,business,indicator,fiscal_year,series)の最新行
     const eff = {};
@@ -1241,11 +1249,12 @@ async function loadAdded(){
                        avg3: ind==='⑤経費回収率'? avg3('sewer',biz,ind):null};
     }));
     const kj = KESSAN? KESSAN[m.municipality_key] : null;
-    ADDED.push({key:m.municipality_key, name:m.name, pref:m.prefecture,
+    built.push({key:m.municipality_key, name:m.name, pref:m.prefecture,
       muniType:m.muni_type||(kj?kj['類型']:null), similar_groups:m.similar_groups||{},
       kessan:kj||null, water, sewer,
       hasWater:Object.keys(water).length>0, sewerBiz:Object.keys(sewer)});
   });
+  ADDED = built;
 }
 // 追加団体の①スコア(良好度 s)と切迫(popUrg)
 function addedGenScores(a){
@@ -1283,7 +1292,22 @@ function parseKeihi(wb, nYear){
   }
   const A = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null});
   const row4=A[3]||[], row5=A[4]||[], row6=A[5]||[];
-  const n = parseInt(nYear.replace('R',''),10);
+  // 年度自動判定: 行5ラベル(「当該値R5」「令和5年度」等)からRの最大値を検出。検出できれば選択値より優先
+  const yrsFound = new Set();
+  (row5||[]).forEach(v=>{
+    if (v===null||v===undefined) return;
+    const m = String(v).match(/(?:R|令和)\s*(\d{1,2})/g);
+    if (m) m.forEach(t=>{ const mm=t.match(/(\d{1,2})/); if(mm) yrsFound.add(parseInt(mm[1],10)); });
+  });
+  let n = parseInt(nYear.replace('R',''),10);
+  let autoDetected = false;
+  if (yrsFound.size >= 2){
+    const detected = Math.max(...yrsFound);
+    if (detected >= 4 && detected <= 12){ // 妥当域のみ採用
+      autoDetected = true;
+      n = detected;
+    }
+  }
   const years = [n-4,n-3,n-2,n-1,n].map(x=> x>=1? 'R'+x : 'H'+(30+x));
   const blocks=[];
   for (let c=0;c<row4.length;c++){
@@ -1303,7 +1327,7 @@ function parseKeihi(wb, nYear){
     if (lb===null||lb===undefined||String(lb).trim()==='') continue;
     basic.push({label:String(lb).trim(), value:row6[c]});
   }
-  return {years, blocks, basic};
+  return {years, blocks, basic, usedN:'R'+n, autoDetected, selectedN:nYear};
 }
 let addParsed=null, addFile=null;
 // 取込指標名の正規化: 丸数字・括弧・単位表記の揺れを吸収して静的側の正準ラベルに合わせる
@@ -1336,9 +1360,12 @@ async function renderAdd(){
   if (ADDED.length){
     h+='<table><tr><th class="l">団体</th><th>類型</th><th>①</th><th class="l">②取込済</th><th></th></tr>';
     ADDED.forEach(a=>{
-      const imp=[a.hasWater?'水道':null, ...a.sewerBiz].filter(Boolean).join('・')||'なし';
+      const impList=[a.hasWater?'水道':null, ...a.sewerBiz].filter(Boolean);
+      const imp = impList.length
+        ? impList.map(b=>esc(b)+' <button class="linklike" data-delimp="'+esc(a.key)+'¦'+esc(b)+'">取込取消</button>').join(' / ')
+        : 'なし';
       h+='<tr><td class="l">'+esc(a.key)+'</td><td>'+esc(a.muniType||'−')+'</td>'
-       +'<td>'+(a.kessan?'静的搭載':'欠測')+'</td><td class="l">'+esc(imp)+'</td>'
+       +'<td>'+(a.kessan?'静的搭載':'欠測')+'</td><td class="l">'+imp+'</td>'
        +'<td><button class="linklike" data-delmuni="'+esc(a.key)+'">登録取消</button></td></tr>';
     });
     h+='</table><p class="legend">登録取消は論理削除です(取込済の②・入力済の③④も表示対象から外れますが、履歴としてDBに残ります)。</p>';
@@ -1369,9 +1396,15 @@ async function renderAdd(){
     if (['静岡県|湖西市','岐阜県|中津川市','三重県|桑名市'].includes(key)){ msg.textContent='初期3市は登録不要です'; msg.className='savemsg err'; return; }
     if (ADDED.some(a=>a.key===key)){ msg.textContent='登録済みです'; msg.className='savemsg err'; return; }
     const [pref,name]=key.split('|');
-    const {error}=await sb.from('municipalities').insert({municipality_key:key, prefecture:pref, name,
-      muni_type:KESSAN[key]['類型'], note:'5県内(①静的搭載)'});
-    if (error){ msg.textContent='登録失敗: '+error.message; msg.className='savemsg err'; return; }
+    // 論理削除済み行があれば復元(unique制約対応)。過去の②取込・③④入力も表示に復帰する
+    const {data:restored, error:eU}=await sb.from('municipalities')
+      .update({is_deleted:false}).eq('municipality_key',key).select('municipality_key');
+    if (eU){ msg.textContent='登録失敗: '+eU.message; msg.className='savemsg err'; return; }
+    if (!restored || !restored.length){
+      const {error}=await sb.from('municipalities').insert({municipality_key:key, prefecture:pref, name,
+        muni_type:KESSAN[key]['類型'], note:'5県内(①静的搭載)'});
+      if (error){ msg.textContent='登録失敗: '+error.message; msg.className='savemsg err'; return; }
+    } else { msg.textContent='削除済みの登録を復元しました(過去の取込・入力も復帰)'; msg.className='savemsg ok'; }
     renderAdd(); refreshDashboards();
   });
   document.getElementById('addRegX').addEventListener('click', async ()=>{
@@ -1380,13 +1413,27 @@ async function renderAdd(){
     if (!pref||!name){ msg.textContent='県・団体名を入力してください'; msg.className='savemsg err'; return; }
     const key=pref+'|'+name;
     if (ADDED.some(a=>a.key===key)){ msg.textContent='登録済みです'; msg.className='savemsg err'; return; }
-    const {error}=await sb.from('municipalities').insert({municipality_key:key, prefecture:pref, name, note:'5県外(①欠測)'});
-    if (error){ msg.textContent='登録失敗: '+error.message; msg.className='savemsg err'; return; }
+    const {data:restored, error:eU}=await sb.from('municipalities')
+      .update({is_deleted:false}).eq('municipality_key',key).select('municipality_key');
+    if (eU){ msg.textContent='登録失敗: '+eU.message; msg.className='savemsg err'; return; }
+    if (!restored || !restored.length){
+      const {error}=await sb.from('municipalities').insert({municipality_key:key, prefecture:pref, name, note:'5県外(①欠測)'});
+      if (error){ msg.textContent='登録失敗: '+error.message; msg.className='savemsg err'; return; }
+    } else { msg.textContent='削除済みの登録を復元しました(過去の取込・入力も復帰)'; msg.className='savemsg ok'; }
     renderAdd(); refreshDashboards();
   });
   document.querySelectorAll('button[data-delmuni]').forEach(b=>b.addEventListener('click', async ()=>{
     if (!confirm(b.dataset.delmuni+' の登録を取消しますか?')) return;
     const {error}=await sb.from('municipalities').update({is_deleted:true}).eq('municipality_key', b.dataset.delmuni);
+    if (error){ alert('取消失敗: '+error.message); return; }
+    renderAdd(); refreshDashboards();
+  }));
+  document.querySelectorAll('button[data-delimp]').forEach(b=>b.addEventListener('click', async ()=>{
+    const [key,biz]=b.dataset.delimp.split('¦');
+    if (!confirm(key+' の「'+biz+'」の取込データを取消しますか?(論理削除。誤取込のやり直しに使用)')) return;
+    let q = sb.from('measurements').update({is_deleted:true}).eq('municipality_key',key);
+    q = (biz==='水道')? q.eq('axis','water') : q.eq('axis','sewer').eq('business',biz);
+    const {error}=await q;
     if (error){ alert('取消失敗: '+error.message); return; }
     renderAdd(); refreshDashboards();
   }));
@@ -1410,6 +1457,13 @@ async function doParse(){
                  group:document.getElementById('impGroup').value.trim()};
     msg.textContent='解析OK:'+p.blocks.length+'指標を検出'; msg.className='savemsg ok';
     let h='<h3>プレビュー(登録前の確認)</h3>';
+    if (p.autoDetected && p.usedN!==p.selectedN){
+      h+='<div class="note-box"><b>年度を自動補正:</b> 選択値は'+esc(p.selectedN)+'でしたが、ファイルの年度表記から最新決算年度='+esc(p.usedN)+'と判定し、こちらを採用しました(年度ズレによる誤登録の防止)。掲載期間: '+p.years.join('・')+'</div>';
+    } else if (p.autoDetected){
+      h+='<p class="legend">最新決算年度'+esc(p.usedN)+'をファイルの年度表記から自動判定(掲載期間: '+p.years.join('・')+')。</p>';
+    } else {
+      h+='<div class="note-box plain"><b>年度は選択値'+esc(p.selectedN)+'を使用</b>(ファイルから年度表記を検出できませんでした)。元Excelの掲載期間と一致しているか、下表の数値で必ず確認してください。</div>';
+    }
     if (!p.years.includes('R5')) h+='<div class="note-box"><b>注意:</b>この分析表の掲載期間にR5が含まれません('+p.years.join('・')+')。基準年度統一の規律により、ダッシュボード・マトリクスでは欠測扱いになります。</div>';
     h+='<table><tr><th class="l">指標</th>'+p.years.map(y=>'<th>'+y+'<br><span class="sr">当該/類似平均</span></th>').join('')+'<th>全国('+p.years[4]+')</th></tr>';
     p.blocks.forEach(b=>{
@@ -1435,7 +1489,7 @@ async function doCommit(){
   const axis = biz==='水道'?'water':'sewer';
   const business = biz==='水道'? null : biz;
   p.blocks.forEach(b=>{ b.indicator = canonIndicator(b.indicator, axis); });
-  const src = '経営比較分析表Excel('+fname+' / '+document.getElementById('impN').value+'決算版)';
+  const src = '経営比較分析表Excel('+fname+' / '+p.usedN+'決算版'+(p.autoDetected?'・年度自動判定':'')+')';
   const rows=[];
   p.blocks.forEach(b=>{
     for (let i=0;i<5;i++){
