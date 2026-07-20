@@ -213,16 +213,19 @@ function renderGen(){
   let h = '<h2>① 一般会計(令和5年度決算)</h2>';
   h += '<p class="lead">比較基準:5県(岐阜・静岡・愛知・三重・長野)237団体の同一市町村類型平均(暫定。将来「類似団体別市町村財政指数表」の正式平均に差替予定)。湖西・中津川=Ⅱ-2平均(n=34)、桑名=Ⅲ-2平均(n=17)。</p>';
   h += suffCards('gen');
+  h += visSelectorHtml();
+  const vBase = CITIES.filter(c=>!VISIBLE||VISIBLE.has(c.key));
+  const vAdd = ADDED.filter(a=>!VISIBLE||VISIBLE.has(a.key));
   h += '<table><tr><th class="l">指標</th><th>単位</th>';
-  CITIES.forEach(c=>{ h += '<th class="city-head">'+c.name+'<br><span class="sr">'+c.genGroup+'</span></th>'; });
-  ADDED.forEach(a=>{ h += '<th class="city-head">'+esc(a.name)+'<br><span class="sr">'+esc(a.muniType||'−')+'(追加)</span></th>'; });
+  vBase.forEach(c=>{ h += '<th class="city-head">'+c.name+'<br><span class="sr">'+c.genGroup+'</span></th>'; });
+  vAdd.forEach(a=>{ h += '<th class="city-head">'+esc(a.name)+'<br><span class="sr">'+esc(a.muniType||'−')+'(追加)</span></th>'; });
   h += '<th>Ⅱ-2平均</th><th>Ⅲ-2平均</th></tr>';
   let fwNote = false;
   D.gen_account.forEach(r=>{
     const def = GEN_DEF[r.indicator] || {dir:"ref"};
     h += '<tr><td class="l">'+r.indicator+(def.dir==="ref"?' <span class="sr">(参考指標)</span>':'')
        + (def.dir==="urgency"?' <span class="sr">(切迫度側)</span>':'')+'</td><td>'+(r.unit||'')+'</td>';
-    CITIES.forEach(c=>{
+    vBase.forEach(c=>{
       const raw = r[c.key];
       const avg = r[c.genAvgKey];
       let cell = '';
@@ -252,7 +255,7 @@ function renderGen(){
       }
       h += '<td>'+cell+'</td>';
     });
-    ADDED.forEach(a=>{ h += '<td>'+genCellAdded(a, r.indicator, def)+'</td>'; });
+    vAdd.forEach(a=>{ h += '<td>'+genCellAdded(a, r.indicator, def)+'</td>'; });
     h += '<td>'+ (typeof r.avg_II2==='number'?fmt(r.avg_II2):'−') +'</td><td>'+ (typeof r.avg_III2==='number'?fmt(r.avg_III2):'−') +'</td></tr>';
   });
   h += '</table>';
@@ -264,6 +267,7 @@ function renderGen(){
   }
   h += '<div class="note-box plain"><b>注記:</b> '+(D.meta.gen_baseline_note||'')+'</div>';
   el.innerHTML = h;
+  wireVisSelector('pane-gen');
 }
 
 /* ---------- ② 水道 ---------- */
@@ -286,14 +290,17 @@ function renderWater(){
   let h = '<h2>② 水道事業(末端給水・令和5年度決算)</h2>';
   h += '<p class="lead">比較基準:経営比較分析表の類似団体平均(湖西A4/中津川A4/桑名A3)。料金回収率・管路更新率はR3-R5の3か年平均でスコア判定(定義書3.3。比較対象の類似平均はR5単年値のため近似)。スコア対象外の指標は「参考」表示。</p>';
   h += suffCards('water');
+  h += visSelectorHtml();
+  const vBaseW = CITIES.filter(c=>!VISIBLE||VISIBLE.has(c.key));
+  const vAddW = ADDED.filter(a=>a.hasWater && (!VISIBLE||VISIBLE.has(a.key)));
   h += '<table><tr><th class="l">指標</th><th>単位</th>';
-  CITIES.forEach(c=>{ h+='<th class="city-head">'+c.name+'</th>'; });
-  ADDED.filter(a=>a.hasWater).forEach(a=>{ h+='<th class="city-head">'+esc(a.name)+'<span class="sr">(追加)</span></th>'; });
+  vBaseW.forEach(c=>{ h+='<th class="city-head">'+c.name+'</th>'; });
+  vAddW.forEach(a=>{ h+='<th class="city-head">'+esc(a.name)+'<span class="sr">(追加)</span></th>'; });
   h += '</tr>';
   D.water.rows.forEach(r=>{
     const def = WATER_DEF[r.indicator]||{scored:false};
     h += '<tr><td class="l">'+r.indicator+(def.avg3?' <span class="sr">※3か年平均で判定</span>':'')+'</td><td>'+(r.unit||'')+'</td>';
-    CITIES.forEach(c=>{
+    vBaseW.forEach(c=>{
       const cell = r[c.key];
       let v = cell.value, avg = cell.peer_avg, disp;
       if (def.avg3 && D.water.avg3y[def.avg3]){
@@ -304,7 +311,7 @@ function renderWater(){
       }
       h += '<td>'+disp+'<span class="dev">類似平均 '+fmt(avg)+'</span></td>';
     });
-    ADDED.filter(a=>a.hasWater).forEach(a=>{ h += '<td>'+bizCellAdded(a.water[r.indicator], WATER_DEF[r.indicator]||{scored:false})+'</td>'; });
+    vAddW.forEach(a=>{ h += '<td>'+bizCellAdded(a.water[r.indicator], WATER_DEF[r.indicator]||{scored:false})+'</td>'; });
     h += '</tr>';
   });
   h += '</table>'+legend();
@@ -314,6 +321,7 @@ function renderWater(){
     +'<span class="flag">老朽化起因</span>桑名市:人口密度は高いが管路経年化率36.09%(類似平均24.49%)・有収率80.01%。老朽化起因の漏水が示唆され、構造要因ではなく更新需要のシグナル。<br>'
     +'<span class="flag">繰入嵩上げ</span>中津川市水道の経常収支比率は基準外繰入による嵩上げに注意(R6は105.15%だが基準外繰入増加による。繰出金の基準内外データは取得予定)。</div>';
   el.innerHTML = h;
+  wireVisSelector('pane-water');
 }
 
 /* ---------- ② 下水道 ---------- */
@@ -340,17 +348,19 @@ function renderSewer(){
   let h = '<h2>② 下水道事業(令和5年度決算)</h2>';
   h += '<p class="lead">事業別に類似団体平均と比較(公共:湖西Cc2/中津川Cd1/桑名Ad、特環:D2、農集排:F1、個別:L2)。経費回収率はR3-R5の3か年平均で判定。桑名市農集排はR5欠測(R6.3.31法適用化)。</p>';
   h += suffCards('sewer');
+  h += visSelectorHtml();
+  const vBaseS = CITIES.filter(c=>!VISIBLE||VISIBLE.has(c.key));
   D.sewer.blocks.forEach(block=>{
     h += '<h3>'+block.title+'</h3>';
-    const addedInBiz = ADDED.filter(a=>a.sewerBiz.includes(block.title));
+    const addedInBiz = ADDED.filter(a=>a.sewerBiz.includes(block.title) && (!VISIBLE||VISIBLE.has(a.key)));
     h += '<table><tr><th class="l">指標</th><th>単位</th>';
-    CITIES.forEach(c=>{ h+='<th class="city-head">'+c.name+'</th>'; });
+    vBaseS.forEach(c=>{ h+='<th class="city-head">'+c.name+'</th>'; });
     addedInBiz.forEach(a=>{ h+='<th class="city-head">'+esc(a.name)+'<span class="sr">(追加)</span></th>'; });
     h += '</tr>';
     block.rows.forEach(r=>{
       const def = SEWER_DEF[r.indicator]||{scored:false};
       h += '<tr><td class="l">'+r.indicator+(def.avg3?' <span class="sr">※3か年平均で判定</span>':'')+'</td><td>'+(r.unit||'')+'</td>';
-      CITIES.forEach(c=>{
+      vBaseS.forEach(c=>{
         const cell = r[c.key];
         if (cell.na){
           const lbl = (c.key==='kuwana' && block.title==='農業集落排水') ? 'R5欠測(R6.3.31法適用化)' : '該当なし';
@@ -389,6 +399,7 @@ function renderSewer(){
     +'企業債残高合計 '+fmt(fx.debt_total_yen/1e8,1)+'億円のうち一般会計負担見込 '+fmt(fx.debt_ga_share_yen/1e8,1)+'億円を控除した '+fmt(fx.debt_net_yen/1e8,1)+'億円を使用料収入 '+fmt(fx.sewer_fee_revenue_yen/1e8,1)+'億円で除した概算比率 約'+fmt(fx.corrected_ratio_pct,0)+'%をスコア計算に使用。'+fx.note+'</div>';
   h += '<div class="note-box plain"><b>その他の既知の注意:</b> 中津川市公共下水道の企業債残高対事業規模比率はR3:382→R4:106→R5:315と大変動(分母の算定要因は要検証)。特環の類似団体平均(D2)は母集団が弱く、平均比で良く見える相対評価バイアスに注意。湖西市は特環を含め公共下水道事業会計として一体経理のうえ分析表上で按分報告。中津川市個別排水処理は累積欠損金比率669%だが処理区域内人口201人の極小事業。</div>';
   el.innerHTML = h;
+  wireVisSelector('pane-sewer');
 }
 
 /* ---------- データ充足率(定義書3.5: 軸ごと・市ごと) ---------- */
@@ -627,7 +638,7 @@ function axisBadge(def){
 }
 async function renderQual(){
   const el = document.getElementById('pane-qual');
-  try{ await loadAdded(); }catch(e){/* 追加団体なしとして続行 */}
+  try{ await loadAdded(); syncVisible(); }catch(e){/* 追加団体なしとして続行 */}
   if (!sb){
     el.innerHTML = '<h2>③制度・政治環境/④当社シナジー 入力</h2><div class="note-box">config.js が未設定のため利用できません。「診断・ログイン」タブで接続設定を確認してください。</div>';
     return;
@@ -874,7 +885,7 @@ async function loadQualEff(){
 function computeAll(w, t1, t2, qualEff){
   const T1s=T1, T2s=T2; T1=t1; T2=t2;
   const out={};
-  allCities().forEach(c=>{
+  visibleCities().forEach(c=>{
     const comp = c.added? addedComponents(c.data) : cityComponents(c);
     const q = qualEff[c.key]||{};
     // 切迫度
@@ -922,7 +933,7 @@ function sensitivity(baseW, qualEff){
         const w = JSON.parse(JSON.stringify(baseW));
         w[ax][k]=Math.max(0, w[ax][k]+dl);
         const res = computeAll(w,5,15,qualEff);
-        allCities().forEach(c=>{
+        visibleCities().forEach(c=>{
           const b=base[c.key], r=res[c.key];
           if (b.quad && r.quad && b.quad!==r.quad){
             hits.push({type:'quad', city:c.name, axis:ax, key:k, delta:dl,
@@ -931,8 +942,8 @@ function sensitivity(baseW, qualEff){
         });
         // 順位入替(各軸)
         ['u','c'].forEach(dim=>{
-          const bo=allCities().map(c=>c.key).filter(k2=>base[k2][dim]!==null).sort((a,b2)=>base[b2][dim]-base[a][dim]).join('>');
-          const ro=allCities().map(c=>c.key).filter(k2=>res[k2][dim]!==null).sort((a,b2)=>res[b2][dim]-res[a][dim]).join('>');
+          const bo=visibleCities().map(c=>c.key).filter(k2=>base[k2][dim]!==null).sort((a,b2)=>base[b2][dim]-base[a][dim]).join('>');
+          const ro=visibleCities().map(c=>c.key).filter(k2=>res[k2][dim]!==null).sort((a,b2)=>res[b2][dim]-res[a][dim]).join('>');
           if (bo!==ro) hits.push({type:'rank', dim:(dim==='u'?'切迫度':'受入能力'), axis:ax, key:k, delta:dl});
         });
       });
@@ -942,7 +953,7 @@ function sensitivity(baseW, qualEff){
   const thVariants=[[3,10],[7,20]];
   thVariants.forEach(([t1,t2])=>{
     const res=computeAll(baseW,t1,t2,qualEff);
-    allCities().forEach(c=>{
+    visibleCities().forEach(c=>{
       const b=base[c.key], r=res[c.key];
       if (b.quad && r.quad && b.quad!==r.quad)
         hits.push({type:'thresh', city:c.name, t1,t2, from:QUAD_NAMES[b.quad], to:QUAD_NAMES[r.quad]});
@@ -959,7 +970,7 @@ async function renderMatrix(){
   }
   el.innerHTML='<h2>マトリクス・感度分析</h2><p class="lead">計算中…</p>';
   try{
-    await loadAdded();
+    await loadAdded(); syncVisible();
     mxQualEff = await loadQualEff();
     if (!mxWeights){
       mxWeights = defaultWeightsNum();
@@ -989,8 +1000,9 @@ function drawMatrix(){
    +'<p class="lead">縦軸=切迫度、横軸=受入能力(各0〜100。50が高低の境界)、バブル=④シナジー。象限は提案類型への分類装置であり、切迫度が低いことを理由に提案を見送る判断には用いません(定義書2章)。欠測構成要素は重みを除外して再正規化し、軸カバレッジ70%未満は<span class="prov">暫定</span>表示。</p>';
   h+='<div class="mx-wrap"><div class="mx-chart"><canvas id="mxCanvas" height="420"></canvas><div id="mxNoChart"></div></div><div class="mx-side">';
   // 結果表
+  h+=visSelectorHtml();
   h+='<table><tr><th class="l">市</th><th>切迫度</th><th>受入能力</th><th>④</th><th class="l">提案類型</th></tr>';
-  allCities().forEach(c=>{
+  visibleCities().forEach(c=>{
     const r=res[c.key];
     h+='<tr><td class="l">'+c.name+(r.provisional?' <span class="prov">暫定</span>':'')+'</td>'
      +'<td>'+(r.u===null?'−':r.u.toFixed(1))+'<span class="dev">cov '+r.uCov.toFixed(0)+'%</span></td>'
@@ -1047,6 +1059,7 @@ function drawMatrix(){
     box.innerHTML='<b>デフォルト重みの根拠('+(b.dataset.rat==='urgency'?'切迫度':'受入能力')+'/定義書8章):</b> '
       +esc(mxRationale[b.dataset.rat])+'<br><b>④シナジー:</b> '+esc(mxRationale.synergy);
   }));
+  wireVisSelector('pane-matrix');
   drawBubble(res);
 }
 function drawBubble(res){
@@ -1056,7 +1069,7 @@ function drawBubble(res){
     return;
   }
   const pts=[], provPts=[];
-  allCities().forEach(c=>{
+  visibleCities().forEach(c=>{
     const r=res[c.key];
     if (r.u===null||r.c===null) return;
     const p={x:r.c, y:r.u, r:8+(r.syn===null?0:r.syn/100*16), label:c.name+(r.provisional?'(暫定)':'')+(r.syn===null?'(④未入力)':'')};
@@ -1181,6 +1194,36 @@ const BIZ_LIST = ["水道","公共下水道","特定環境保全公共下水道"
 let ADDED = [];       // 追加団体の統合構造
 let KESSAN = null;    // 決算カード237団体(遅延読込)
 let _loadAddedInflight = null; // 同時実行ガード(列二重表示バグ対策)
+let VISIBLE = null;   // 表示対象団体キーのSet(null=未初期化→全選択で初期化)
+function syncVisible(){
+  const all = allCities().map(c=>c.key);
+  if (VISIBLE===null){ VISIBLE = new Set(all); return; }
+  // 新規登録団体はデフォルト表示ON。既存のチェック状態は維持
+  all.forEach(k=>{ if(!VISIBLE.has(k) && !VISIBLE._seen?.has(k)) VISIBLE.add(k); });
+  if (!VISIBLE._seen) VISIBLE._seen=new Set();
+  all.forEach(k=>VISIBLE._seen.add(k));
+}
+function visibleCities(){ return allCities().filter(c=>!VISIBLE || VISIBLE.has(c.key)); }
+function visSelectorHtml(){
+  const cs = allCities();
+  if (cs.length<=3 && !ADDED.length) return '';
+  let h='<div class="note-box plain" style="padding:6px 10px"><b style="font-size:12px">表示団体:</b> ';
+  cs.forEach(c=>{
+    const chk = (!VISIBLE||VISIBLE.has(c.key))?' checked':'';
+    h+='<label style="font-size:12px; margin-right:12px; white-space:nowrap"><input type="checkbox" class="visChk" value="'+esc(c.key)+'"'+chk+'> '+esc(c.name)+(c.added?'(追加)':'')+'</label>';
+  });
+  h+='<span class="sr">チェックを外した団体は各タブ・マトリクスの表示から一時的に隠れます(データは保持)。</span></div>';
+  return h;
+}
+function wireVisSelector(pane){
+  document.querySelectorAll('#'+pane+' .visChk').forEach(cb=>cb.addEventListener('change', ()=>{
+    if (!VISIBLE) VISIBLE=new Set(allCities().map(c=>c.key));
+    if (cb.checked) VISIBLE.add(cb.value); else VISIBLE.delete(cb.value);
+    renderGen(); renderWater(); renderSewer();
+    const mp=document.getElementById('pane-matrix');
+    if (mp && mp.classList.contains('show') && mxQualEff) drawMatrix();
+  }));
+}
 async function loadKessan(){
   if (KESSAN) return KESSAN;
   const r = await fetch('data/kessan_card_5ken_R5.json');
@@ -1513,6 +1556,7 @@ async function doCommit(){
 }
 async function refreshDashboards(){
   try{ await loadAdded(); }catch(e){ return; }
+  syncVisible();
   if (D){ renderGen(); renderWater(); renderSewer(); }
 }
 
@@ -1572,8 +1616,10 @@ async function gateSubmit(){
 function loadStatic(){
   fetch('data/mef_static_v1.json')
     .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .then(json=>{
+    .then(async json=>{
       D = json;
+      try{ await loadAdded(); }catch(e){/* 追加団体なしとして続行 */}
+      syncVisible();
       document.getElementById('loading').style.display='none';
       renderGen(); renderWater(); renderSewer(); renderTs(); renderNotes(); renderDiag();
       document.getElementById('pane-gen').classList.add('show');
