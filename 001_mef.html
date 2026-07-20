@@ -7,6 +7,7 @@
 <title>MEF | 市町村評価共通フレームワーク</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="config.js"></script>
 <style>
 :root{
@@ -123,6 +124,7 @@ details.histbox summary{cursor:pointer; font-size:12px; color:var(--grey);}
   <button data-tab="sewer">② 下水道</button>
   <button data-tab="qual">③④ 入力</button>
   <button data-tab="matrix">マトリクス・感度</button>
+  <button data-tab="add">市町村追加</button>
   <button data-tab="ts">時系列 R1–R5</button>
   <button data-tab="notes">注記・出典</button>
   <button data-tab="diag">診断・ログイン</button>
@@ -135,6 +137,7 @@ details.histbox summary{cursor:pointer; font-size:12px; color:var(--grey);}
   <section id="pane-sewer" class="tab-pane"></section>
   <section id="pane-qual" class="tab-pane"></section>
   <section id="pane-matrix" class="tab-pane"></section>
+  <section id="pane-add" class="tab-pane"></section>
   <section id="pane-ts" class="tab-pane"></section>
   <section id="pane-notes" class="tab-pane"></section>
   <section id="pane-diag" class="tab-pane"></section>
@@ -212,6 +215,7 @@ function renderGen(){
   h += suffCards('gen');
   h += '<table><tr><th class="l">指標</th><th>単位</th>';
   CITIES.forEach(c=>{ h += '<th class="city-head">'+c.name+'<br><span class="sr">'+c.genGroup+'</span></th>'; });
+  ADDED.forEach(a=>{ h += '<th class="city-head">'+esc(a.name)+'<br><span class="sr">'+esc(a.muniType||'−')+'(追加)</span></th>'; });
   h += '<th>Ⅱ-2平均</th><th>Ⅲ-2平均</th></tr>';
   let fwNote = false;
   D.gen_account.forEach(r=>{
@@ -248,6 +252,7 @@ function renderGen(){
       }
       h += '<td>'+cell+'</td>';
     });
+    ADDED.forEach(a=>{ h += '<td>'+genCellAdded(a, r.indicator, def)+'</td>'; });
     h += '<td>'+ (typeof r.avg_II2==='number'?fmt(r.avg_II2):'−') +'</td><td>'+ (typeof r.avg_III2==='number'?fmt(r.avg_III2):'−') +'</td></tr>';
   });
   h += '</table>';
@@ -283,6 +288,7 @@ function renderWater(){
   h += suffCards('water');
   h += '<table><tr><th class="l">指標</th><th>単位</th>';
   CITIES.forEach(c=>{ h+='<th class="city-head">'+c.name+'</th>'; });
+  ADDED.filter(a=>a.hasWater).forEach(a=>{ h+='<th class="city-head">'+esc(a.name)+'<span class="sr">(追加)</span></th>'; });
   h += '</tr>';
   D.water.rows.forEach(r=>{
     const def = WATER_DEF[r.indicator]||{scored:false};
@@ -298,6 +304,7 @@ function renderWater(){
       }
       h += '<td>'+disp+'<span class="dev">類似平均 '+fmt(avg)+'</span></td>';
     });
+    ADDED.filter(a=>a.hasWater).forEach(a=>{ h += '<td>'+bizCellAdded(a.water[r.indicator], WATER_DEF[r.indicator]||{scored:false})+'</td>'; });
     h += '</tr>';
   });
   h += '</table>'+legend();
@@ -335,8 +342,10 @@ function renderSewer(){
   h += suffCards('sewer');
   D.sewer.blocks.forEach(block=>{
     h += '<h3>'+block.title+'</h3>';
+    const addedInBiz = ADDED.filter(a=>a.sewerBiz.includes(block.title));
     h += '<table><tr><th class="l">指標</th><th>単位</th>';
     CITIES.forEach(c=>{ h+='<th class="city-head">'+c.name+'</th>'; });
+    addedInBiz.forEach(a=>{ h+='<th class="city-head">'+esc(a.name)+'<span class="sr">(追加)</span></th>'; });
     h += '</tr>';
     block.rows.forEach(r=>{
       const def = SEWER_DEF[r.indicator]||{scored:false};
@@ -369,6 +378,7 @@ function renderSewer(){
         if (def.zeroCaveat && v===0){ caveat='<span class="dev">値0は経過年数等のデータ未整備に起因する場合あり(③3-1と併読)</span>'; }
         h += '<td>'+fmt(v)+extra+' '+(refOnly?'<span class="chip ref">参考</span>':chip(scObj))+'<span class="dev">類似平均 '+fmt(avg)+'</span>'+caveat+'</td>';
       });
+      addedInBiz.forEach(a=>{ h += '<td>'+bizCellAdded(a.sewer[block.title][r.indicator], SEWER_DEF[r.indicator]||{scored:false})+'</td>'; });
       h += '</tr>';
     });
     h += '</table>';
@@ -615,8 +625,9 @@ function axisBadge(def){
   if (def.w2) h+='<span class="axis-badge w2">重み2倍(FY2027国費要件直結)</span>';
   return h;
 }
-function renderQual(){
+async function renderQual(){
   const el = document.getElementById('pane-qual');
+  try{ await loadAdded(); }catch(e){/* 追加団体なしとして続行 */}
   if (!sb){
     el.innerHTML = '<h2>③制度・政治環境/④当社シナジー 入力</h2><div class="note-box">config.js が未設定のため利用できません。「診断・ログイン」タブで接続設定を確認してください。</div>';
     return;
@@ -629,7 +640,7 @@ function renderQual(){
   let h = '<h2>③制度・政治環境/④当社シナジー 入力</h2>'
     +'<p class="lead">定義書6・7章のアンカー選択式。<b>根拠資料名の記録が必須</b>です(定義書9.2:入力者判断の恣意性抑制)。入力は追記専用で、同一項目の最新の非取消行が有効値になります(過去行はそのまま履歴)。3-1・3-2はFY2027国費要件に直結するため受入能力軸内で重み2倍(定義書6章)。</p>'
     +'<label>対象団体: <select id="qualCity">';
-  CITIES.forEach(c=>{ h+='<option value="'+c.key+'"'+(c.key===qualCity?' selected':'')+'>'+c.name+'('+c.pref+')</option>'; });
+  allCities().forEach(c=>{ h+='<option value="'+esc(c.key)+'"'+(c.key===qualCity?' selected':'')+'>'+esc(c.name)+'('+esc(c.pref)+')'+(c.added?'(追加)':'')+'</option>'; });
   h += '</select></label> <span id="qualSummary" class="sr"></span><div id="qualList">読み込み中…</div>';
   el.innerHTML = h;
   document.getElementById('qualCity').addEventListener('change', e=>{ qualCity=e.target.value; loadQual(); });
@@ -639,7 +650,7 @@ async function loadQual(){
   const list = document.getElementById('qualList');
   if (!list) return;
   list.innerHTML = '読み込み中…';
-  const key = QUAL_KEYS[qualCity];
+  const key = keyOf(qualCity);
   const {data, error} = await sb.from('qualitative_inputs')
     .select('id,item_code,level,evidence,note,entered_by,is_deleted,created_at')
     .eq('municipality_key', key)
@@ -696,7 +707,7 @@ async function saveQual(code){
   if (!ev){ msg.textContent='根拠資料名は必須です(定義書9.2)'; msg.className='savemsg err'; return; }
   msg.textContent='保存中…';
   const {error} = await sb.from('qualitative_inputs').insert({
-    municipality_key: QUAL_KEYS[qualCity], item_code: code, level: lv,
+    municipality_key: keyOf(qualCity), item_code: code, level: lv,
     evidence: ev, note: nt||null, entered_by: session.user?.email||null
   });
   if (error){ msg.textContent='保存失敗: '+error.message; msg.className='savemsg err'; return; }
@@ -851,8 +862,8 @@ async function loadQualEff(){
     .select('municipality_key,item_code,level,is_deleted,created_at')
     .order('created_at',{ascending:false});
   if (error) throw new Error(error.message);
-  const eff={kosai:{},nakatsugawa:{},kuwana:{}};
-  const inv={}; Object.keys(QUAL_KEYS).forEach(k=>inv[QUAL_KEYS[k]]=k);
+  const eff={}; allCities().forEach(c=>eff[c.key]={});
+  const inv={}; allCities().forEach(c=>inv[keyOf(c.key)]=c.key);
   (data||[]).forEach(r=>{
     const ck=inv[r.municipality_key]; if(!ck||r.is_deleted) return;
     if (!(r.item_code in eff[ck])) eff[ck][r.item_code]=r.level;
@@ -863,8 +874,8 @@ async function loadQualEff(){
 function computeAll(w, t1, t2, qualEff){
   const T1s=T1, T2s=T2; T1=t1; T2=t2;
   const out={};
-  CITIES.forEach(c=>{
-    const comp = cityComponents(c);
+  allCities().forEach(c=>{
+    const comp = c.added? addedComponents(c.data) : cityComponents(c);
     const q = qualEff[c.key]||{};
     // 切迫度
     const uComps = {
@@ -911,7 +922,7 @@ function sensitivity(baseW, qualEff){
         const w = JSON.parse(JSON.stringify(baseW));
         w[ax][k]=Math.max(0, w[ax][k]+dl);
         const res = computeAll(w,5,15,qualEff);
-        CITIES.forEach(c=>{
+        allCities().forEach(c=>{
           const b=base[c.key], r=res[c.key];
           if (b.quad && r.quad && b.quad!==r.quad){
             hits.push({type:'quad', city:c.name, axis:ax, key:k, delta:dl,
@@ -920,8 +931,8 @@ function sensitivity(baseW, qualEff){
         });
         // 順位入替(各軸)
         ['u','c'].forEach(dim=>{
-          const bo=CITIES.map(c=>c.key).filter(k2=>base[k2][dim]!==null).sort((a,b2)=>base[b2][dim]-base[a][dim]).join('>');
-          const ro=CITIES.map(c=>c.key).filter(k2=>res[k2][dim]!==null).sort((a,b2)=>res[b2][dim]-res[a][dim]).join('>');
+          const bo=allCities().map(c=>c.key).filter(k2=>base[k2][dim]!==null).sort((a,b2)=>base[b2][dim]-base[a][dim]).join('>');
+          const ro=allCities().map(c=>c.key).filter(k2=>res[k2][dim]!==null).sort((a,b2)=>res[b2][dim]-res[a][dim]).join('>');
           if (bo!==ro) hits.push({type:'rank', dim:(dim==='u'?'切迫度':'受入能力'), axis:ax, key:k, delta:dl});
         });
       });
@@ -931,7 +942,7 @@ function sensitivity(baseW, qualEff){
   const thVariants=[[3,10],[7,20]];
   thVariants.forEach(([t1,t2])=>{
     const res=computeAll(baseW,t1,t2,qualEff);
-    CITIES.forEach(c=>{
+    allCities().forEach(c=>{
       const b=base[c.key], r=res[c.key];
       if (b.quad && r.quad && b.quad!==r.quad)
         hits.push({type:'thresh', city:c.name, t1,t2, from:QUAD_NAMES[b.quad], to:QUAD_NAMES[r.quad]});
@@ -948,6 +959,7 @@ async function renderMatrix(){
   }
   el.innerHTML='<h2>マトリクス・感度分析</h2><p class="lead">計算中…</p>';
   try{
+    await loadAdded();
     mxQualEff = await loadQualEff();
     if (!mxWeights){
       mxWeights = defaultWeightsNum();
@@ -978,7 +990,7 @@ function drawMatrix(){
   h+='<div class="mx-wrap"><div class="mx-chart"><canvas id="mxCanvas" height="420"></canvas><div id="mxNoChart"></div></div><div class="mx-side">';
   // 結果表
   h+='<table><tr><th class="l">市</th><th>切迫度</th><th>受入能力</th><th>④</th><th class="l">提案類型</th></tr>';
-  CITIES.forEach(c=>{
+  allCities().forEach(c=>{
     const r=res[c.key];
     h+='<tr><td class="l">'+c.name+(r.provisional?' <span class="prov">暫定</span>':'')+'</td>'
      +'<td>'+(r.u===null?'−':r.u.toFixed(1))+'<span class="dev">cov '+r.uCov.toFixed(0)+'%</span></td>'
@@ -1044,7 +1056,7 @@ function drawBubble(res){
     return;
   }
   const pts=[], provPts=[];
-  CITIES.forEach(c=>{
+  allCities().forEach(c=>{
     const r=res[c.key];
     if (r.u===null||r.c===null) return;
     const p={x:r.c, y:r.u, r:8+(r.syn===null?0:r.syn/100*16), label:c.name+(r.provisional?'(暫定)':'')+(r.syn===null?'(④未入力)':'')};
@@ -1095,6 +1107,361 @@ function drawBubble(res){
   });
 }
 
+/* ---------- 追加団体: セル描画ヘルパー・統合 ---------- */
+const GEN_FIELD_MAP = {"財政力指数":["財政力指数",true],"経常収支比率":["経常収支比率",false],
+  "実質公債費比率":["実質公債費比率",false],"将来負担比率":["将来負担比率",false],
+  "地方交付税依存度":["交付税依存度_%",false],"地方税(人口1人当たり)":["地方税_1人当_千円",true],
+  "地方債現在高(同上)":["地方債_1人当_千円",false],"国勢調査人口増減率(H27→R2)":["国調増減率",null],
+  "職員数(人口千人当たり)":["職員数_千人当",null],"住民基本台帳人口(R6.1.1)":["住基人口",null]};
+function genCellAdded(a, indicator, def){
+  if (!a.kessan) return '<span class="chip na">①欠測(5県外)</span>';
+  const m = GEN_FIELD_MAP[indicator];
+  if (!m) return '<span class="chip na">欠測</span>';
+  const v = a.kessan[m[0]];
+  if (def.dir==="missing") return '<span class="chip na">欠測</span>';
+  if (def.special==="fw" && (v===null||v===undefined))
+    return '− <span class="chip s2">+2 算定なし※</span><span class="dev">比率算定対象外</span>';
+  if (typeof v!=='number') return '−';
+  if (def.dir==="info") return fmt(v,0)+'<span class="dev">※決算カード(R5時点)住基人口</span>';
+  if (def.dir==="ref") return fmt(v)+' <span class="chip ref">参考</span>';
+  const b = genBaseline(a.muniType, m[0]);
+  if (b.avg===null) return fmt(v)+' <span class="chip na">基準なし</span>';
+  const fb = b.fallback? '<span class="dev">※n&lt;5のため同ローマ数字群平均('+b.n+'団体)</span>':'';
+  if (def.dir==="urgency"){
+    const d=devRate(v,b.avg);
+    if (d===null) return fmt(v);
+    const pct=-d*100; let sc=0; if(pct>T2)sc=2; else if(pct>T1)sc=1; else if(pct<-T2)sc=-2; else if(pct<-T1)sc=-1;
+    const mm={"2":["sm2","切迫 大"],"1":["sm1","切迫 やや大"],"0":["s0","平均並み"],"-1":["s1","緩やか"],"-2":["s2","緩やか+"]}[String(sc)];
+    return fmt(v)+' <span class="chip '+mm[0]+'">'+mm[1]+'</span><span class="dev">類型平均 '+fmt(b.avg)+'</span>'+fb;
+  }
+  return fmt(v)+' '+chip(score5(v,b.avg,def.dir==="high"))+'<span class="dev">類型平均 '+fmt(b.avg)+'</span>'+fb;
+}
+function bizCellAdded(cell, def){
+  if (!cell) return '<span class="chip na">取込なし</span>';
+  if (cell.v===null||cell.v===undefined) return '<span class="chip na">R5欠測</span>';
+  const useV = (def.scored && cell.avg3!==null&&cell.avg3!==undefined) ? cell.avg3 : cell.v;
+  const extra = (cell.avg3!==null&&cell.avg3!==undefined)? '<span class="sr"> /3y '+fmt(cell.avg3)+'</span>':'';
+  if (!def.scored) return fmt(cell.v)+extra+' <span class="chip ref">参考</span><span class="dev">類似平均 '+fmt(cell.avg)+'</span>';
+  const sc = score5(useV, cell.avg, def.dir==="high");
+  return fmt(cell.v)+extra+' '+chip(sc)+'<span class="dev">類似平均 '+fmt(cell.avg)+'</span>';
+}
+function allCities(){
+  return [...CITIES, ...ADDED.map(a=>({key:a.key, name:a.name, pref:a.pref, added:true, data:a}))];
+}
+function keyOf(cKey){ return QUAL_KEYS[cKey] || cKey; }
+// 追加団体の構成要素スコア(取込②+決算カード①)
+function addedComponents(a){
+  function ws(ind, dirHigh){
+    const c=a.water[ind]; if(!c) return null;
+    const v=(c.avg3!==null&&c.avg3!==undefined)?c.avg3:c.v;
+    if (v===null||c.avg===null||c.avg===undefined) return null;
+    const sc=score5(v,c.avg,dirHigh); return sc.s;
+  }
+  // 下水道: 取込事業の等重み平均(処理区域内人口が未取得のため。規模加重は基本情報整備後の課題)
+  function ss(ind, dirHigh){
+    const arr=[];
+    a.sewerBiz.forEach(biz=>{
+      const c=a.sewer[biz][ind]; if(!c) return;
+      const v=(c.avg3!==null&&c.avg3!==undefined)?c.avg3:c.v;
+      if (v===null||c.avg===null||c.avg===undefined) return;
+      const sc=score5(v,c.avg,dirHigh); if(sc.s!==null) arr.push(sc.s);
+    });
+    return meanArr(arr);
+  }
+  const finance = meanArr([ws('⑤料金回収率',true), ws('①経常収支比率',true), ss('⑤経費回収率',true), ss('①経常収支比率',true)]);
+  const aging = meanArr([ws('①有形固定資産減価償却率',false), ws('②管路経年化率',false), ws('③管路更新率',true),
+                         ss('①有形固定資産減価償却率',false), ss('②管渠老朽化率',false), ss('③管渠改善率',true)]);
+  const capex = meanArr([ws('④企業債残高対給水収益比率',false), ss('④企業債残高対事業規模比率',false)]);
+  const g = addedGenScores(a);
+  return {finance, aging, capex, fiscal:g.fiscal, popUrg:g.popUrg};
+}
+
+/* ---------- 市町村追加(定義書3.6/指示書 画面要件5) ---------- */
+const BIZ_LIST = ["水道","公共下水道","特定環境保全公共下水道","農業集落排水","個別排水処理"];
+let ADDED = [];       // 追加団体の統合構造
+let KESSAN = null;    // 決算カード237団体(遅延読込)
+async function loadKessan(){
+  if (KESSAN) return KESSAN;
+  const r = await fetch('data/kessan_card_5ken_R5.json');
+  if (!r.ok) throw new Error('決算カードJSONの読込失敗 HTTP '+r.status);
+  KESSAN = await r.json();
+  return KESSAN;
+}
+// ①類型平均(暫定5県内平均。n<5はローマ数字グループへフォールバック)
+function genBaseline(muniType, field){
+  if (!KESSAN || !muniType) return {avg:null, n:0, fallback:false};
+  let pool = Object.values(KESSAN).filter(e=>e['類型']===muniType);
+  let fallback=false;
+  if (pool.length<5){
+    const g = muniType.charAt(0);
+    pool = Object.values(KESSAN).filter(e=>String(e['類型']).charAt(0)===g);
+    fallback=true;
+  }
+  const vals = pool.map(e=>e[field]).filter(v=>typeof v==='number');
+  return {avg: vals.length? vals.reduce((a,b)=>a+b,0)/vals.length : null, n:pool.length, fallback};
+}
+async function loadAdded(){
+  if (!sb || !session){ ADDED=[]; return; }
+  const {data:mun, error:e1} = await sb.from('municipalities')
+    .select('municipality_key,prefecture,name,muni_type,similar_groups,is_deleted,created_at')
+    .eq('is_deleted', false).order('created_at');
+  if (e1) throw new Error(e1.message);
+  ADDED = [];
+  if (!mun || !mun.length) return;
+  const {data:ms, error:e2} = await sb.from('measurements')
+    .select('municipality_key,axis,business,indicator,fiscal_year,value,series,is_deleted,created_at,source')
+    .eq('is_deleted', false).order('created_at', {ascending:false});
+  if (e2) throw new Error(e2.message);
+  const need5ken = mun.some(m=>KESSAN===null);
+  try{ await loadKessan(); }catch(err){/* ①は欠測表示にフォールバック */}
+  mun.forEach(m=>{
+    const rows = (ms||[]).filter(r=>r.municipality_key===m.municipality_key);
+    // 有効値: (axis,business,indicator,fiscal_year,series)の最新行
+    const eff = {};
+    rows.forEach(r=>{
+      const k=[r.axis,r.business||'',r.indicator,r.fiscal_year,r.series].join('¦');
+      if (!(k in eff)) eff[k]=r.value;
+    });
+    function get(axis,biz,ind,fy,series){ return eff[[axis,biz||'',ind,fy,series].join('¦')]; }
+    function avg3(axis,biz,ind){
+      const v=['R3','R4','R5'].map(fy=>get(axis,biz,ind,fy,'self')).filter(x=>typeof x==='number');
+      return v.length===3? v.reduce((a,b)=>a+b,0)/3 : null;
+    }
+    const water={}, sewer={};
+    rows.forEach(r=>{
+      if (r.axis==='water'){ if(!(r.indicator in water)) water[r.indicator]={}; }
+      if (r.axis==='sewer' && r.business){ if(!sewer[r.business]) sewer[r.business]={}; if(!(r.indicator in sewer[r.business])) sewer[r.business][r.indicator]={}; }
+    });
+    Object.keys(water).forEach(ind=>{
+      water[ind]={v:get('water',null,ind,'R5','self'), avg:get('water',null,ind,'R5','peer_avg'),
+                  avg3: (ind==='⑤料金回収率'||ind==='③管路更新率')? avg3('water',null,ind):null};
+    });
+    Object.keys(sewer).forEach(biz=>Object.keys(sewer[biz]).forEach(ind=>{
+      sewer[biz][ind]={v:get('sewer',biz,ind,'R5','self'), avg:get('sewer',biz,ind,'R5','peer_avg'),
+                       avg3: ind==='⑤経費回収率'? avg3('sewer',biz,ind):null};
+    }));
+    const kj = KESSAN? KESSAN[m.municipality_key] : null;
+    ADDED.push({key:m.municipality_key, name:m.name, pref:m.prefecture,
+      muniType:m.muni_type||(kj?kj['類型']:null), similar_groups:m.similar_groups||{},
+      kessan:kj||null, water, sewer,
+      hasWater:Object.keys(water).length>0, sewerBiz:Object.keys(sewer)});
+  });
+}
+// 追加団体の①スコア(良好度 s)と切迫(popUrg)
+function addedGenScores(a){
+  if (!a.kessan) return {fiscal:null, popUrg:null};
+  const map=[["財政力指数","財政力指数",true],["経常収支比率","経常収支比率",false],
+    ["実質公債費比率","実質公債費比率",false],["将来負担比率","将来負担比率",false],
+    ["交付税依存度_%","地方交付税依存度",false],["地方税_1人当_千円","地方税",true],
+    ["地方債_1人当_千円","地方債",false]];
+  const arr=[];
+  map.forEach(([f,_,hib])=>{
+    const v=a.kessan[f];
+    if (f==='将来負担比率' && (v===null||v===undefined)){ arr.push(2); return; }
+    if (typeof v!=='number') return;
+    const b=genBaseline(a.muniType,f);
+    if (b.avg===null) return;
+    const sc=score5(v,b.avg,hib); if(sc.s!==null) arr.push(sc.s);
+  });
+  let popUrg=null;
+  const pv=a.kessan['国調増減率'], pb=genBaseline(a.muniType,'国調増減率');
+  if (typeof pv==='number' && pb.avg!==null){
+    const d=devRate(pv,pb.avg);
+    if (d!==null){ const pct=-d*100; popUrg=pct>T2?2:pct>T1?1:pct<-T2?-2:pct<-T1?-1:0; }
+  }
+  return {fiscal:meanArr(arr), popUrg};
+}
+// 経営比較分析表「データ」シートのパース(前スレッド検証済み仕様)
+function parseKeihi(wb, nYear){
+  const ws = wb.Sheets['データ'];
+  if (!ws) throw new Error('「データ」シートが見つかりません。シート: '+wb.SheetNames.join(', '));
+  // 使用範囲をA1起点に正規化(先頭行・列が空のファイルでも行4/5/6・H〜W列の絶対座標で読む)
+  if (ws['!ref']){
+    const ref = XLSX.utils.decode_range(ws['!ref']);
+    ref.s.r = 0; ref.s.c = 0;
+    ws['!ref'] = XLSX.utils.encode_range(ref);
+  }
+  const A = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null});
+  const row4=A[3]||[], row5=A[4]||[], row6=A[5]||[];
+  const n = parseInt(nYear.replace('R',''),10);
+  const years = [n-4,n-3,n-2,n-1,n].map(x=> x>=1? 'R'+x : 'H'+(30+x));
+  const blocks=[];
+  for (let c=0;c<row4.length;c++){
+    const head=row4[c];
+    if (head===null||head===undefined||String(head).trim()==='') continue;
+    const name=String(head).trim();
+    const num=v=> (typeof v==='number' && isFinite(v))? v : null;
+    blocks.push({indicator:name, years,
+      self:  [0,1,2,3,4].map(i=>num(row6[c+i])),
+      peer:  [0,1,2,3,4].map(i=>num(row6[c+5+i])),
+      national: num(row6[c+10])});
+  }
+  if (!blocks.length) throw new Error('行4に指標ブロック見出しが見つかりません。様式が想定(総務省標準様式)と異なる可能性があります。');
+  const basic=[];
+  for (let c=7;c<=22;c++){
+    const lb=row5[c];
+    if (lb===null||lb===undefined||String(lb).trim()==='') continue;
+    basic.push({label:String(lb).trim(), value:row6[c]});
+  }
+  return {years, blocks, basic};
+}
+let addParsed=null, addFile=null;
+// 取込指標名の正規化: 丸数字・括弧・単位表記の揺れを吸収して静的側の正準ラベルに合わせる
+function canonIndicator(name, axis){
+  const strip = t => String(t).replace(/^[①-⑳0-9．.\s]+/,'').replace(/[（(].*?[)）]/g,'').replace(/[%％\s]/g,'').trim();
+  const base = strip(name);
+  const cands = Object.keys(axis==='water'? WATER_DEF : SEWER_DEF);
+  for (const cd of cands){ if (strip(cd)===base) return cd; }
+  return String(name).trim(); // 未知の指標は原文のまま保持(DBには残るがダッシュボード非表示)
+}
+async function renderAdd(){
+  const el=document.getElementById('pane-add');
+  el.innerHTML='<h2>市町村追加</h2><p class="lead">読み込み中…</p>';
+  try{ await loadKessan(); await loadAdded(); }catch(e){ el.innerHTML='<h2>市町村追加</h2><div class="note-box">読込エラー: '+esc(e.message)+'</div>'; return; }
+  let h='<h2>市町村追加</h2>'
+   +'<p class="lead">共通フレームワークとしての運用(定義書3.6)。①は5県237団体を静的搭載済みのため<b>5県内は選択のみで登録完了</b>。②は総務省標準様式の経営比較分析表Excel(「データ」シートを含む全国共通様式)を取込みます。取込は基準年度統一(R5)の規律に従い、ダッシュボード・マトリクスはR5値のみを使用します(他年度は時系列参考)。</p>';
+  // A. 団体登録
+  h+='<h3>A. 団体登録</h3><div class="qual-item">'
+   +'<b>5県内(選択のみ)</b><div class="qual-form">'
+   +'<select id="addPref"><option value="">県を選択</option>'
+   +['岐阜県','静岡県','愛知県','三重県','長野県'].map(p=>'<option>'+p+'</option>').join('')
+   +'</select><select id="addMuni" disabled><option value="">団体を選択</option></select>'
+   +'<button class="btn primary" id="addReg5">登録</button><span class="savemsg" id="addMsg5"></span></div>'
+   +'<div style="margin-top:10px"><b>5県外(手入力)</b> <span class="sr">①一般会計は静的データ対象外のため欠測表示になります(将来、財政指数表で補完)</span>'
+   +'<div class="qual-form"><input type="text" id="addPrefX" placeholder="都道府県(例:滋賀県)" style="max-width:140px">'
+   +'<input type="text" id="addMuniX" placeholder="団体名(例:長浜市)" style="max-width:160px">'
+   +'<button class="btn" id="addRegX">登録</button><span class="savemsg" id="addMsgX"></span></div></div></div>';
+  // 登録済み一覧
+  h+='<h3>登録済み追加団体('+ADDED.length+')</h3>';
+  if (ADDED.length){
+    h+='<table><tr><th class="l">団体</th><th>類型</th><th>①</th><th class="l">②取込済</th><th></th></tr>';
+    ADDED.forEach(a=>{
+      const imp=[a.hasWater?'水道':null, ...a.sewerBiz].filter(Boolean).join('・')||'なし';
+      h+='<tr><td class="l">'+esc(a.key)+'</td><td>'+esc(a.muniType||'−')+'</td>'
+       +'<td>'+(a.kessan?'静的搭載':'欠測')+'</td><td class="l">'+esc(imp)+'</td>'
+       +'<td><button class="linklike" data-delmuni="'+esc(a.key)+'">登録取消</button></td></tr>';
+    });
+    h+='</table><p class="legend">登録取消は論理削除です(取込済の②・入力済の③④も表示対象から外れますが、履歴としてDBに残ります)。</p>';
+  } else h+='<p class="lead">まだありません。</p>';
+  // B. ②取込
+  h+='<h3>B. ② 経営比較分析表Excelの取込</h3><div class="qual-item"><div class="qual-form">'
+   +'<select id="impMuni"><option value="">対象団体</option>'+ADDED.map(a=>'<option value="'+esc(a.key)+'">'+esc(a.name)+'</option>').join('')+'</select>'
+   +'<select id="impBiz">'+BIZ_LIST.map(b=>'<option>'+b+'</option>').join('')+'</select>'
+   +'<select id="impN"><option>R5</option><option selected>R6</option><option>R7</option></select><span class="sr">=分析表の最新決算年度N</span>'
+   +'<input type="text" id="impGroup" placeholder="類似団体区分(例:A3)" style="max-width:130px">'
+   +'</div><div class="qual-form"><input type="file" id="impFile" accept=".xlsx,.xls">'
+   +'<button class="btn primary" id="impParse">解析</button><span class="savemsg" id="impMsg"></span></div>'
+   +'<div id="impPreview"></div></div>';
+  el.innerHTML=h;
+  // events
+  document.getElementById('addPref').addEventListener('change', e=>{
+    const sel=document.getElementById('addMuni');
+    const pref=e.target.value;
+    if (!pref){ sel.disabled=true; sel.innerHTML='<option value="">団体を選択</option>'; return; }
+    const opts=Object.keys(KESSAN).filter(k=>k.startsWith(pref+'|'))
+      .map(k=>'<option value="'+esc(k)+'">'+esc(k.split('|')[1])+'('+esc(KESSAN[k]['類型'])+')</option>').join('');
+    sel.disabled=false; sel.innerHTML='<option value="">団体を選択</option>'+opts;
+  });
+  document.getElementById('addReg5').addEventListener('click', async ()=>{
+    const msg=document.getElementById('addMsg5'); msg.className='savemsg'; msg.textContent='';
+    const key=document.getElementById('addMuni').value;
+    if (!key){ msg.textContent='団体を選択してください'; msg.className='savemsg err'; return; }
+    if (['静岡県|湖西市','岐阜県|中津川市','三重県|桑名市'].includes(key)){ msg.textContent='初期3市は登録不要です'; msg.className='savemsg err'; return; }
+    if (ADDED.some(a=>a.key===key)){ msg.textContent='登録済みです'; msg.className='savemsg err'; return; }
+    const [pref,name]=key.split('|');
+    const {error}=await sb.from('municipalities').insert({municipality_key:key, prefecture:pref, name,
+      muni_type:KESSAN[key]['類型'], note:'5県内(①静的搭載)'});
+    if (error){ msg.textContent='登録失敗: '+error.message; msg.className='savemsg err'; return; }
+    renderAdd(); refreshDashboards();
+  });
+  document.getElementById('addRegX').addEventListener('click', async ()=>{
+    const msg=document.getElementById('addMsgX'); msg.className='savemsg'; msg.textContent='';
+    const pref=document.getElementById('addPrefX').value.trim(), name=document.getElementById('addMuniX').value.trim();
+    if (!pref||!name){ msg.textContent='県・団体名を入力してください'; msg.className='savemsg err'; return; }
+    const key=pref+'|'+name;
+    if (ADDED.some(a=>a.key===key)){ msg.textContent='登録済みです'; msg.className='savemsg err'; return; }
+    const {error}=await sb.from('municipalities').insert({municipality_key:key, prefecture:pref, name, note:'5県外(①欠測)'});
+    if (error){ msg.textContent='登録失敗: '+error.message; msg.className='savemsg err'; return; }
+    renderAdd(); refreshDashboards();
+  });
+  document.querySelectorAll('button[data-delmuni]').forEach(b=>b.addEventListener('click', async ()=>{
+    if (!confirm(b.dataset.delmuni+' の登録を取消しますか?')) return;
+    const {error}=await sb.from('municipalities').update({is_deleted:true}).eq('municipality_key', b.dataset.delmuni);
+    if (error){ alert('取消失敗: '+error.message); return; }
+    renderAdd(); refreshDashboards();
+  }));
+  document.getElementById('impParse').addEventListener('click', doParse);
+}
+async function doParse(){
+  const msg=document.getElementById('impMsg'); msg.className='savemsg'; msg.textContent='';
+  const pv=document.getElementById('impPreview'); pv.innerHTML='';
+  addParsed=null;
+  if (typeof XLSX==='undefined'){ msg.textContent='SheetJS(CDN)未読込。通信環境を確認して再読込してください'; msg.className='savemsg err'; return; }
+  const muni=document.getElementById('impMuni').value;
+  if (!muni){ msg.textContent='対象団体を選択してください'; msg.className='savemsg err'; return; }
+  const f=document.getElementById('impFile').files[0];
+  if (!f){ msg.textContent='Excelファイルを選択してください'; msg.className='savemsg err'; return; }
+  msg.textContent='解析中…';
+  try{
+    const wb = XLSX.read(await f.arrayBuffer(), {type:'array'});
+    const nY = document.getElementById('impN').value;
+    const p = parseKeihi(wb, nY);
+    addParsed = {muni, biz:document.getElementById('impBiz').value, nY, p, fname:f.name,
+                 group:document.getElementById('impGroup').value.trim()};
+    msg.textContent='解析OK:'+p.blocks.length+'指標を検出'; msg.className='savemsg ok';
+    let h='<h3>プレビュー(登録前の確認)</h3>';
+    if (!p.years.includes('R5')) h+='<div class="note-box"><b>注意:</b>この分析表の掲載期間にR5が含まれません('+p.years.join('・')+')。基準年度統一の規律により、ダッシュボード・マトリクスでは欠測扱いになります。</div>';
+    h+='<table><tr><th class="l">指標</th>'+p.years.map(y=>'<th>'+y+'<br><span class="sr">当該/類似平均</span></th>').join('')+'<th>全国('+p.years[4]+')</th></tr>';
+    p.blocks.forEach(b=>{
+      h+='<tr><td class="l">'+esc(b.indicator)+'</td>';
+      for (let i=0;i<5;i++) h+='<td>'+fmt(b.self[i])+'<span class="dev">'+fmt(b.peer[i])+'</span></td>';
+      h+='<td>'+fmt(b.national)+'</td></tr>';
+    });
+    h+='</table>';
+    if (p.basic.length){
+      h+='<details class="histbox"><summary>基本情報('+p.basic.length+'項目)</summary><div class="hist"><table>';
+      p.basic.forEach(b=>{ h+='<tr><td class="l">'+esc(b.label)+'</td><td>'+esc(b.value===null?'−':b.value)+'</td></tr>'; });
+      h+='</table></div></details>';
+    }
+    h+='<div class="qual-form"><button class="btn primary" id="impCommit">この内容で登録</button><span class="savemsg" id="impCmsg"></span></div>'
+     +'<p class="legend">プレビューの数値が元のExcelと一致することを確認してから登録してください(値の妥当性検証はこの目視が最後の砦です)。</p>';
+    pv.innerHTML=h;
+    document.getElementById('impCommit').addEventListener('click', doCommit);
+  }catch(e){ msg.textContent='解析失敗: '+e.message; msg.className='savemsg err'; }
+}
+async function doCommit(){
+  const msg=document.getElementById('impCmsg'); msg.className='savemsg'; msg.textContent='登録中…';
+  const {muni,biz,p,fname,group}=addParsed;
+  const axis = biz==='水道'?'water':'sewer';
+  const business = biz==='水道'? null : biz;
+  p.blocks.forEach(b=>{ b.indicator = canonIndicator(b.indicator, axis); });
+  const src = '経営比較分析表Excel('+fname+' / '+document.getElementById('impN').value+'決算版)';
+  const rows=[];
+  p.blocks.forEach(b=>{
+    for (let i=0;i<5;i++){
+      if (b.self[i]!==null) rows.push({municipality_key:muni, axis, business, indicator:b.indicator, fiscal_year:p.years[i], value:b.self[i], series:'self', source:src, entered_by:session.user?.email||null});
+      if (b.peer[i]!==null) rows.push({municipality_key:muni, axis, business, indicator:b.indicator, fiscal_year:p.years[i], value:b.peer[i], series:'peer_avg', source:src, entered_by:session.user?.email||null});
+    }
+    if (b.national!==null) rows.push({municipality_key:muni, axis, business, indicator:b.indicator, fiscal_year:p.years[4], value:b.national, series:'national_avg', source:src, entered_by:session.user?.email||null});
+  });
+  p.basic.forEach(b=>{
+    if (typeof b.value==='number') rows.push({municipality_key:muni, axis:'basic', business, indicator:b.label, fiscal_year:p.years[4], value:b.value, series:'self', source:src, entered_by:session.user?.email||null});
+  });
+  const {error}=await sb.from('measurements').insert(rows);
+  if (error){ msg.textContent='登録失敗: '+error.message+(String(error.message).includes('series')?' ※002_mef_add_series_column.sql が未実行の可能性':''); msg.className='savemsg err'; return; }
+  if (group){
+    const a=ADDED.find(x=>x.key===muni);
+    const sg=Object.assign({}, a?a.similar_groups:{}); sg[biz]=group;
+    await sb.from('municipalities').update({similar_groups:sg}).eq('municipality_key', muni);
+  }
+  msg.textContent='登録完了('+rows.length+'行)'; msg.className='savemsg ok';
+  renderAdd(); refreshDashboards();
+}
+async function refreshDashboards(){
+  try{ await loadAdded(); }catch(e){ return; }
+  if (D){ renderGen(); renderWater(); renderSewer(); }
+}
+
 /* ---------- タブ・初期化 ---------- */
 document.getElementById('nav').addEventListener('click', e=>{
   if (e.target.tagName!=='BUTTON') return;
@@ -1104,6 +1471,7 @@ document.getElementById('nav').addEventListener('click', e=>{
   document.getElementById('pane-'+e.target.dataset.tab).classList.add('show');
   if (e.target.dataset.tab==='qual') renderQual();
   if (e.target.dataset.tab==='matrix') renderMatrix();
+  if (e.target.dataset.tab==='add') renderAdd();
 });
 
 /* ---------- 起動: 認証ファースト(入口ゲート) ---------- */
