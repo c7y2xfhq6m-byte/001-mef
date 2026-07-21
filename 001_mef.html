@@ -150,10 +150,13 @@ details.histbox summary{cursor:pointer; font-size:12px; color:var(--grey);}
 <script>
 "use strict";
 /* ============================================================
-   MEF 001_mef.html  マイルストーン(0)〜(4)+追加改修+D1(年鑑統合・水道)
+   MEF 001_mef.html  マイルストーン(0)〜(4)+追加改修+D1+D2(年鑑統合)
    設計正本: 指標定義書v1.2(v1.3案改訂中) / 引き継ぎ指示v3 / 開発環境引き継ぎ書
-   D1: 公営企業年鑑(水道R5)から②人員(職員数・平均年齢)を切迫度軸へ組込。
-       data/mef_nenkan_water_v1.json を追加読込(欠落時は従来動作+欠測表示)。
+   D1: 年鑑(水道R5)②人員を切迫度軸へ組込(data/mef_nenkan_water_v1.json)
+   D2: 年鑑(下水道R5・法適)統合(data/mef_nenkan_sewer_v1.json)。
+       繰入金計上区分による基準外繰入依存度(近似)を受入能力w2_capexへ組込
+       (水道はv1.1の追加列を使用)。下水道有収率(処理水量ベース)を表示。
+       法非適は参考リストのみ(案A)。JSON欠落時は従来動作+欠測表示。
    ============================================================ */
 
 const CITIES = [
@@ -199,6 +202,91 @@ function nkStaffGood(pref, name){
   const sAge = (typeof e.staff.avg_age==='number' && p.age.avg)? score5(e.staff.avg_age, p.age.avg, false).s : null;
   const sPps = (typeof e.staff.pop_per_staff==='number' && p.pps.avg)? score5(e.staff.pop_per_staff, p.pps.avg, false).s : null;
   return meanArr([sAge, sPps]);
+}
+
+/* ---------- 年鑑(下水道・法適)・繰入金計上区分近似(D2/定義書v1.3案3.2・5.1・5.2) ---------- */
+let NKS = null;        // 年鑑(下水道R5)5県抽出データ(法適=指標収録/法非適=参考リスト)
+let NKSIDX = null;     // {'県|団体名': {事業区分: entity}}(法適)
+let NKSHI = null;      // {'県|団体名': [事業区分,...]}(法非適・参考)
+const NKS_KBN = ['公共下水道','特定環境保全公共下水道','農業集落排水','個別排水処理']; // 軸集計対象(現行アプリの事業構成に一致)
+function buildNksIdx(){
+  NKSIDX = null; NKSHI = null;
+  if (!NKS || !Array.isArray(NKS.entities)) return;
+  NKSIDX = {}; NKSHI = {};
+  NKS.entities.forEach(e=>{ if(!NKSIDX[e.key]) NKSIDX[e.key]={}; if(!NKSIDX[e.key][e.kbn]) NKSIDX[e.key][e.kbn]=e; });
+  (NKS.hihoteki||[]).forEach(h=>{ if(!NKSHI[h.key]) NKSHI[h.key]=[]; NKSHI[h.key].push(h.kbn); });
+}
+// 水道v1.1の繰入列が存在するか(旧v1.0ファイル配置時のフォールバック判定)
+function nkHasKurikire(){
+  if (!NK || !Array.isArray(NK.entities)) return false;
+  const e = NK.entities.find(x=>x.jigyo==='末端給水');
+  return !!(e && e.fin && e.fin.rev_total!==undefined);
+}
+// 基準外繰入(近似)。計上区分の原則(負担金=基準内/補助金=基準外)による近似。厳密は繰出金調が正。
+function nkWaterDep(e){
+  const f = e && e.fin;
+  if (!f || typeof f.rev_total!=='number' || f.rev_total<=0) return null;
+  const gai = (f.sub_op||0)+(f.sub_sp||0)+(f.cap_sub||0);
+  return gai/f.rev_total*100;
+}
+function nkSewerDep(e){
+  if (!e || typeof e.rev_total!=='number' || e.rev_total<=0) return null;
+  const gai = (e.sub_op||0)+(e.sub_sp||0)+Math.max((e.cap_sub||0)-(e.cap_sub_usui||0),0);
+  return gai/e.rev_total*100;
+}
+let _nkWDep = null;    // 水道: 暫定母集団の依存度平均
+let _nkSStats = null;  // 下水道: 事業区分別 {kbn:{dep:{avg,n}, yushu:{avg,n}}}
+function nkWaterDepStats(){
+  if (_nkWDep!==null) return _nkWDep;
+  if (!nkHasKurikire()){ _nkWDep=false; return _nkWDep; }
+  const pool = NK.entities.filter(e=>e.jigyo==='末端給水' && ['市営','町村営','指定都市営'].indexOf(e.keiei)>=0);
+  const v = pool.map(nkWaterDep).filter(x=>typeof x==='number');
+  _nkWDep = v.length? {avg:v.reduce((a,b)=>a+b,0)/v.length, n:v.length} : false;
+  return _nkWDep;
+}
+function nkSewerStats(){
+  if (_nkSStats!==null) return _nkSStats;
+  if (!NKS){ _nkSStats=false; return _nkSStats; }
+  const o = {};
+  NKS_KBN.forEach(k=>{
+    const pool = NKS.entities.filter(e=>e.kbn===k);
+    const dv = pool.map(nkSewerDep).filter(x=>typeof x==='number');
+    const yv = pool.map(e=>e.yushu_ritsu).filter(x=>typeof x==='number');
+    o[k] = { dep: dv.length? {avg:dv.reduce((a,b)=>a+b,0)/dv.length, n:dv.length} : null,
+             yushu: yv.length? {avg:yv.reduce((a,b)=>a+b,0)/yv.length, n:yv.length} : null };
+  });
+  _nkSStats = o;
+  return _nkSStats;
+}
+// 受入能力側スコア(良好度-2..2): 基準外繰入依存度は低いほど良好
+function nkWaterKurikoshiGood(pref, name){
+  const e = nkEntityByCity(pref, name);
+  const st = nkWaterDepStats();
+  if (!e || !st) return null;
+  const d = nkWaterDep(e);
+  if (d===null || !st.avg) return null;
+  return score5(d, st.avg, false).s;
+}
+function nkSewerEnts(pref, name){
+  if (!NKSIDX) return null;
+  return NKSIDX[pref+'|'+name] || null;
+}
+function nkSewerKurikoshiGood(pref, name){
+  const m = nkSewerEnts(pref, name);
+  const st = nkSewerStats();
+  if (!m || !st) return null;
+  let num=0, den=0;
+  NKS_KBN.forEach(k=>{
+    const e = m[k]; if(!e) return;
+    const s = st[k] && st[k].dep;
+    const d = nkSewerDep(e);
+    if (d===null || !s || !s.avg) return;
+    const sc = score5(d, s.avg, false).s;
+    if (sc===null) return;
+    const w = (typeof e.pop_treated==='number' && e.pop_treated>0)? e.pop_treated : 1; // 処理区域内人口で規模加重(欠測は等重み)
+    num += sc*w; den += w;
+  });
+  return den>0? num/den : null;
 }
 
 /* ---------- スコア計算(定義書3.3: 乖離率方式) ---------- */
@@ -402,6 +490,33 @@ function renderWater(){
       +'(3)暫定比較基準(5県市町村営全体平均)には規模バイアスがあります(小規模団体ほど1人当たり給水人口が構造的に低い)。D3で類似団体区分別平均へ移行するまで、乖離率の絶対水準よりも市間の相対比較を主に読んでください。'
       +'(4)年鑑非収録団体(企業団・県営給水区域、法非適簡易水道)の②人員は欠測とし、切迫度は重み再正規化で計算します。</div>';
   }
+  h += '<h3>繰入金(基準内外の近似)(受入能力②投資余力の構成要素/D2・出典:年鑑 様式24)</h3>';
+  if (!nkHasKurikire()){
+    h += '<div class="note-box"><b>繰入金データ未読込:</b> data/mef_nenkan_water_v1.json がv1.1(繰入列追加版)ではないか未配置のため、繰出金の基準内外(近似)は欠測扱いです。</div>';
+  } else {
+    const wd = nkWaterDepStats();
+    h += '<p class="lead">基準外繰入依存度(近似)=(営業外収益の他会計補助金+特別利益の他会計繰入金+資本的収入の他会計補助金)÷総収益。計上区分の原則(負担金=基準内/補助金=基準外)による<b>近似</b>であり、厳密な基準内外は決算状況調(繰出金調)が正です。低いほど受入能力+。比較基準は暫定で5県市町村営末端給水の平均(D3で類似団体区分別へ差替予定)。</p>';
+    h += '<table><tr><th class="l">指標</th><th>単位</th>';
+    vBaseW.forEach(c=>{ h+='<th class="city-head">'+c.name+'</th>'; });
+    h += '<th>暫定5県平均</th></tr>';
+    h += '<tr><td class="l">基準外繰入依存度(近似)</td><td>%</td>';
+    vBaseW.forEach(c=>{
+      const e = nkEntityByCity(c.pref, c.name);
+      const d = e? nkWaterDep(e) : null;
+      if (d===null){ h+='<td><span class="chip na">'+(e?'R5欠測':'年鑑非収録')+'</span></td>'; return; }
+      const sc = wd? score5(d, wd.avg, false) : null;
+      h += '<td>'+fmt(d)+' '+(sc?chip(sc):'')+'</td>';
+    });
+    h += '<td>'+(wd?fmt(wd.avg)+'<span class="dev">n='+wd.n+'</span>':'−')+'</td></tr>';
+    h += '<tr><td class="l">内訳(補助金収益的/特利繰入/補助金資本的) <span class="sr">(参考指標)</span></td><td>千円</td>';
+    vBaseW.forEach(c=>{
+      const e = nkEntityByCity(c.pref, c.name);
+      if (!e || !e.fin){ h+='<td>−</td>'; return; }
+      h += '<td>'+fmt(e.fin.sub_op||0,0)+' / '+fmt(e.fin.sub_sp||0,0)+' / '+fmt(e.fin.cap_sub||0,0)+' <span class="chip ref">参考</span></td>';
+    });
+    h += '<td>−</td></tr></table>';
+    h += '<div class="note-box plain"><b>注記:</b> 中津川市の「繰入嵩上げ」構造フラグ(上記)はこの近似指標で定量把握できます。ゼロ計上団体が多く分布が右に歪むため、乖離率の絶対水準は参考に留め、市間の相対比較を主に読んでください。</div>';
+  }
   h += '<h3>構造フラグ(スコアと分離・注記表示/定義書3.4)</h3>';
   h += '<div class="note-box plain">'
     +'<span class="flag">簡易水道統合</span>中津川市:H29に旧簡易水道23事業等を統合。山間部小規模系統の包含により有収率・給水原価が構造的に悪化(給水人口密度296人/km²。湖西1,008・桑名1,010)。<br>'
@@ -481,6 +596,46 @@ function renderSewer(){
     h += '</table>';
   });
   h += legend();
+  /* ---- 年鑑由来指標(D2: 繰入金計上区分近似・有収率(処理水量ベース)) ---- */
+  h += '<h3>年鑑由来指標(D2/出典:年鑑 下水道 様式1〜4・法適)</h3>';
+  if (!NKS){
+    h += '<div class="note-box"><b>年鑑(下水道)未読込:</b> data/mef_nenkan_sewer_v1.json が読み込めないため、基準外繰入依存度(近似)・有収率(処理水量ベース)は欠測扱いです。</div>';
+  } else {
+    const st = nkSewerStats();
+    h += '<p class="lead">基準外繰入依存度(近似)=(営業外収益の他会計補助金+特別利益の他会計繰入金+資本的収入の他会計補助金−うち雨水処理費相当額)÷総収益。低いほど受入能力+(②投資余力の構成要素)。有収率(処理水量ベース)=年間有収水量÷年間汚水処理水量。低いほど不明水大(切迫シグナル)ですが、水道有収率と同様に<b>ダッシュボード判定のみで軸集計には含めません</b>。比較基準は暫定で5県・法適・同一事業区分平均(D3で正式化)。</p>';
+    h += '<table><tr><th class="l">市・事業</th><th>基準外繰入依存度(近似)%</th><th>有収率(処理水量ベース)%</th><th>処理区域内人口</th></tr>';
+    const cityList = vBaseS.map(c=>({pref:c.pref,name:c.name})).concat(
+      ADDED.filter(a=>(!VISIBLE||VISIBLE.has(a.key)) && nkSewerEnts(a.pref,a.name)).map(a=>({pref:a.pref,name:a.name,added:true})));
+    cityList.forEach(ci=>{
+      const m = nkSewerEnts(ci.pref, ci.name);
+      if (!m){ h+='<tr><td class="l">'+esc(ci.name)+'</td><td colspan="3"><span class="chip na">年鑑(法適)非収録</span></td></tr>'; return; }
+      NKS_KBN.forEach(kbn=>{
+        const e = m[kbn]; if(!e) return;
+        const s = st[kbn]||{};
+        const d = nkSewerDep(e);
+        let c1;
+        if (d===null) c1='<span class="chip na">R5欠測</span>';
+        else {
+          const sc = (s.dep&&s.dep.avg)? score5(d, s.dep.avg, false) : null;
+          c1 = fmt(d)+' '+(sc?chip(sc):'')+'<span class="dev">区分平均 '+(s.dep?fmt(s.dep.avg):'−')+' n='+(s.dep?s.dep.n:'−')+'</span>';
+        }
+        let c2;
+        if (typeof e.yushu_ritsu!=='number') c2='<span class="chip na">R5欠測</span>';
+        else {
+          const sc2 = (s.yushu&&s.yushu.avg)? score5(e.yushu_ritsu, s.yushu.avg, true) : null;
+          c2 = fmt(e.yushu_ritsu)+' '+(sc2?chip(sc2):'')+'<span class="dev">区分平均 '+(s.yushu?fmt(s.yushu.avg):'−')+'</span>';
+        }
+        h += '<tr><td class="l">'+esc(ci.name)+(ci.added?'(追加)':'')+' '+kbn+'</td><td>'+c1+'</td><td>'+c2+'</td><td>'+fmt(e.pop_treated,0)+'</td></tr>';
+      });
+      // 法非適(参考・案A)
+      const hi = NKSHI && NKSHI[ci.pref+'|'+ci.name];
+      if (hi && hi.length){
+        h += '<tr><td class="l">'+esc(ci.name)+(ci.added?'(追加)':'')+' <span class="sr">(法非適)</span></td><td colspan="3"><span class="chip ref">参考</span> '+hi.map(esc).join('、')+':法非適(官公庁会計)のため指標体系が異なり、スコア対象外(案A/定義書v1.3案3.2)。法適化後の年鑑収録を待って取込。</td></tr>';
+      }
+    });
+    h += '</table>';
+    h += '<div class="note-box plain"><b>注記:</b> 繰入の計上区分(負担金=基準内/補助金=基準外)による近似であり、厳密な基準内外は決算状況調(繰出金調)が正です。雨水処理負担金・雨水処理費相当額(公費負担原則)は基準内側として扱い分子から除外しています。特環・農集排・個別排水は基準外繰入依存度の区分平均自体が高く(汚水処理の構造的な繰入依存)、平均比のスコアは「同種事業の中での相対位置」を示すに過ぎない点に注意してください。</div>';
+  }
   const fx = D.sewer.kosai_bond_correction;
   h += '<div class="note-box"><b>※湖西市下水道・企業債残高の補正(検証済):</b> '+fx.issue+'。'
     +'企業債残高合計 '+fmt(fx.debt_total_yen/1e8,1)+'億円のうち一般会計負担見込 '+fmt(fx.debt_ga_share_yen/1e8,1)+'億円を控除した '+fmt(fx.debt_net_yen/1e8,1)+'億円を使用料収入 '+fmt(fx.sewer_fee_revenue_yen/1e8,1)+'億円で除した概算比率 約'+fmt(fx.corrected_ratio_pct,0)+'%をスコア計算に使用。'+fx.note+'</div>';
@@ -492,14 +647,22 @@ function renderSewer(){
 /* ---------- データ充足率(定義書3.5: 軸ごと・市ごと) ---------- */
 const SUFF_DEF = {
   gen:  {total:9, label:"①一般会計", missing:["将来推計人口指数(社人研・取得予定)"]},
-  water:{total:9, label:"②水道",     missing:["繰出金の基準内外(決算状況調が正。D2で年鑑の繰入金計上区分による近似を導入予定)"]},
-  sewer:{total:8, label:"②下水道",   missing:["有収率(処理水量ベース・未取得)","繰出金の基準内外(取得予定)"]}
+  water:{total:9, label:"②水道",     missing:[]},
+  sewer:{total:8, label:"②下水道",   missing:[]}
 };
 function suffCards(axis){
   let def = SUFF_DEF[axis];
-  // D1: 年鑑未読込時は水道の人員を欠測に戻す(表示と実計算の整合)
-  if (axis==='water' && !NK){
-    def = {total:def.total, label:def.label, missing:def.missing.concat(["技術職員数・年齢構成(年鑑データ未読込)"])};
+  // D1/D2: 年鑑データの読込状態に応じて欠測へ自動フォールバック(表示と実計算の整合)
+  if (axis==='water'){
+    const miss = def.missing.slice();
+    if (!NK) miss.push("技術職員数・年齢構成(年鑑データ未読込)");
+    if (!nkHasKurikire()) miss.push("繰出金の基準内外(年鑑v1.1未配置。決算状況調が正)");
+    def = {total:def.total, label:def.label, missing:miss};
+  }
+  if (axis==='sewer'){
+    const miss = def.missing.slice();
+    if (!NKS){ miss.push("有収率(処理水量ベース・年鑑未読込)"); miss.push("繰出金の基準内外(年鑑未読込)"); }
+    def = {total:def.total, label:def.label, missing:miss};
   }
   const have = def.total - def.missing.length;
   const pct = Math.round(have/def.total*1000)/10;
@@ -508,7 +671,7 @@ function suffCards(axis){
     + pct.toFixed(1)+'%('+have+'/'+def.total+'指標)'
     + (provisional?' <span class="chip sm2">暫定</span>':' <span class="chip s1">確定(閾値70%以上)</span>')
     + '<div class="bar"><span style="width:'+pct+'%"></span></div>'
-    + '<div class="miss">欠測:'+def.missing.join(' / ')+'</div></div></div>';
+    + '<div class="miss">'+(def.missing.length? '欠測:'+def.missing.join(' / ') : '欠測なし(全指標充足)')+'</div></div></div>';
   return h;
 }
 function legend(){
@@ -591,7 +754,11 @@ function renderNotes(){
   D.notes.forEach(n=>{ h+='<tr><td class="l">'+n.type+'</td><td class="l">'+n.text+'</td></tr>'; });
   if (NK && NK.meta){
     h += '<tr><td class="l">出典(D1追加)</td><td class="l">'+esc(NK.meta.source||'地方公営企業年鑑(水道)')+' / 対象:'+esc(NK.meta.scope||'')+' / 収録'+NK.entities.length+'事業。'
-       +'②人員(平均年齢・職員1人当たり給水人口)はここから取得。年鑑と経営比較分析表の同名指標(経常収支比率等)は算定・母集団が異なるため出典を混在させない(同名でも別指標/定義書v1.3案3.2)。'+((NK.meta.notes||[]).map(esc).join(' '))+'</td></tr>';
+       +'②人員(平均年齢・職員1人当たり給水人口)・基準外繰入依存度(近似・水道)はここから取得。年鑑と経営比較分析表の同名指標(経常収支比率等)は算定・母集団が異なるため出典を混在させない(同名でも別指標/定義書v1.3案3.2)。'+((NK.meta.notes||[]).map(esc).join(' '))+'</td></tr>';
+  }
+  if (NKS && NKS.meta){
+    h += '<tr><td class="l">出典(D2追加)</td><td class="l">'+esc(NKS.meta.source||'地方公営企業年鑑(下水道)')+' / 対象:'+esc(NKS.meta.scope||'')+' / 法適'+NKS.entities.length+'事業・法非適'+(NKS.hihoteki||[]).length+'事業(参考)。'
+       +'基準外繰入依存度(近似)・有収率(処理水量ベース)はここから取得。経費回収率の年鑑算出式(使用料単価÷汚水処理原価)の一致検証済(定義書v1.3案5.2)。'+((NKS.meta.notes||[]).map(esc).join(' '))+'</td></tr>';
   }
   h += '</table>';
   h += '<h3>基本情報(市・事業別)</h3><table><tr><th class="l">市・事業</th><th>類似団体区分</th><th>人口</th><th>給水/処理区域内人口</th><th>普及率%</th><th>家庭料金20m³</th><th>自己資本構成比率%</th><th>年度</th><th class="l">出典</th></tr>';
@@ -872,7 +1039,7 @@ async function cancelQual(id){
 }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 // 内部検証フック(UIからは不可視。実データには影響しない)
-window.__mefTest = { setSb:(x)=>{sb=x;}, setSession:(s)=>{session=s;}, renderQual:()=>renderQual(), renderMatrix:()=>renderMatrix(), computeAll:(w,t1,t2,q)=>computeAll(w,t1,t2,q), defW:()=>defaultWeightsNum(), route:()=>route(), setNk:(x)=>{NK=x; buildNkIdx(); _nkPeer=null;}, nkStaffGood:(p,n)=>nkStaffGood(p,n), nkPeerStats:()=>nkPeerStats(), renderWater:()=>renderWater(), renderGen:()=>renderGen(), renderSewer:()=>renderSewer() };
+window.__mefTest = { setSb:(x)=>{sb=x;}, setSession:(s)=>{session=s;}, renderQual:()=>renderQual(), renderMatrix:()=>renderMatrix(), computeAll:(w,t1,t2,q)=>computeAll(w,t1,t2,q), defW:()=>defaultWeightsNum(), route:()=>route(), setNk:(x)=>{NK=x; buildNkIdx(); _nkPeer=null; _nkWDep=null;}, setNks:(x)=>{NKS=x; buildNksIdx(); _nkSStats=null;}, nkStaffGood:(p,n)=>nkStaffGood(p,n), nkPeerStats:()=>nkPeerStats(), nkWaterKurikoshiGood:(p,n)=>nkWaterKurikoshiGood(p,n), nkSewerKurikoshiGood:(p,n)=>nkSewerKurikoshiGood(p,n), nkWaterDepStats:()=>nkWaterDepStats(), nkSewerStats:()=>nkSewerStats(), renderWater:()=>renderWater(), renderGen:()=>renderGen(), renderSewer:()=>renderSewer() };
 
 /* ---------- マトリクス・感度分析(定義書2章・8章) ---------- */
 const QUAD_NAMES = {
@@ -983,7 +1150,9 @@ function cityComponents(c){
   ]);
   const capex = meanArr([
     wScore('④企業債残高対給水収益比率',false),
-    sewerAggScore(cKey,cityName,'④企業債残高対事業規模比率',false,false)
+    sewerAggScore(cKey,cityName,'④企業債残高対事業規模比率',false,false),
+    nkWaterKurikoshiGood(c.pref, cityName),   // D2: 基準外繰入依存度(近似・水道)
+    nkSewerKurikoshiGood(c.pref, cityName)    // D2: 同(下水道・処理区域内人口加重)
   ]);
   // ①財政指標(7指標。将来負担比率「算定なし」=+2)
   const genMap={"財政力指数":true,"経常収支比率":false,"実質公債費比率":false,"将来負担比率":false,
@@ -1325,7 +1494,8 @@ function addedComponents(a){
   const finance = meanArr([ws('⑤料金回収率',true), ws('①経常収支比率',true), ss('⑤経費回収率',true), ss('①経常収支比率',true)]);
   const aging = meanArr([ws('①有形固定資産減価償却率',false), ws('②管路経年化率',false), ws('③管路更新率',true),
                          ss('①有形固定資産減価償却率',false), ss('②管渠老朽化率',false), ss('③管渠改善率',true)]);
-  const capex = meanArr([ws('④企業債残高対給水収益比率',false), ss('④企業債残高対事業規模比率',false)]);
+  const capex = meanArr([ws('④企業債残高対給水収益比率',false), ss('④企業債残高対事業規模比率',false),
+                         nkWaterKurikoshiGood(a.pref, a.name), nkSewerKurikoshiGood(a.pref, a.name)]); // D2: 5県内は年鑑近似も加味
   const g = addedGenScores(a);
   // ②人員(D1): 追加団体も「県|団体名」で年鑑末端給水と一致すれば付与(5県内のみ該当)
   const staff = nkStaffGood(a.pref, a.name);
@@ -1776,11 +1946,15 @@ function loadStatic(){
     .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(async json=>{
       D = json;
-      // D1: 年鑑(水道R5)の追加読込。失敗しても致命ではない(②人員が欠測に戻るのみ)
+      // D1/D2: 年鑑(水道・下水道R5)の追加読込。失敗しても致命ではない(該当指標が欠測に戻るのみ)
       try{
         const rn = await fetch('data/mef_nenkan_water_v1.json');
-        if (rn.ok){ NK = await rn.json(); buildNkIdx(); _nkPeer = null; }
+        if (rn.ok){ NK = await rn.json(); buildNkIdx(); _nkPeer = null; _nkWDep = null; }
       }catch(e){ NK = null; NKIDX = null; }
+      try{
+        const rs = await fetch('data/mef_nenkan_sewer_v1.json');
+        if (rs.ok){ NKS = await rs.json(); buildNksIdx(); _nkSStats = null; }
+      }catch(e){ NKS = null; NKSIDX = null; NKSHI = null; }
       try{ await loadAdded(); }catch(e){/* 追加団体なしとして続行 */}
       syncVisible();
       document.getElementById('loading').style.display='none';
