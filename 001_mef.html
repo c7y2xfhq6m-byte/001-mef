@@ -150,8 +150,10 @@ details.histbox summary{cursor:pointer; font-size:12px; color:var(--grey);}
 <script>
 "use strict";
 /* ============================================================
-   MEF 001_mef.html  マイルストーン(1): 静的①②ダッシュボード+診断
-   設計正本: 指標定義書v1.2 / 引き継ぎ指示 / 開発環境引き継ぎ書
+   MEF 001_mef.html  マイルストーン(0)〜(4)+追加改修+D1(年鑑統合・水道)
+   設計正本: 指標定義書v1.2(v1.3案改訂中) / 引き継ぎ指示v3 / 開発環境引き継ぎ書
+   D1: 公営企業年鑑(水道R5)から②人員(職員数・平均年齢)を切迫度軸へ組込。
+       data/mef_nenkan_water_v1.json を追加読込(欠落時は従来動作+欠測表示)。
    ============================================================ */
 
 const CITIES = [
@@ -161,8 +163,43 @@ const CITIES = [
 ];
 
 let D = null;          // 静的データ
+let NK = null;         // 公営企業年鑑(水道・R5)5県抽出データ(D1で追加。欠落時null)
+let NKIDX = null;      // 年鑑索引 {'県|団体名': entity}(末端給水のみ)
 let sb = null;         // Supabase クライアント(ログイン用・セッション保持)
 let session = null;
+
+/* ---------- 年鑑(水道)・②人員(D1/定義書v1.3案5.1) ---------- */
+function buildNkIdx(){
+  NKIDX = null;
+  if (!NK || !Array.isArray(NK.entities)) return;
+  NKIDX = {};
+  NK.entities.forEach(e=>{ if (e.jigyo==='末端給水') NKIDX[e.key]=e; });
+}
+// 暫定比較母集団: 5県・末端給水・市町村営(市営/町村営/指定都市営)の単純平均。
+// 規模バイアスあり(小規模団体は職員1人当たり給水人口が構造的に低い)。
+// D3で類似団体区分別平均+フォールバック規則へ差替予定(定義書v1.3案)。
+let _nkPeer = null;
+function nkPeerStats(){
+  if (_nkPeer!==null) return _nkPeer;
+  if (!NK){ _nkPeer = false; return _nkPeer; }
+  const pool = NK.entities.filter(e=>e.jigyo==='末端給水' && ['市営','町村営','指定都市営'].indexOf(e.keiei)>=0);
+  function m(get){ const v=pool.map(get).filter(x=>typeof x==='number'); return v.length? {avg:v.reduce((a,b)=>a+b,0)/v.length, n:v.length} : {avg:null,n:0}; }
+  _nkPeer = { age: m(e=>e.staff.avg_age), pps: m(e=>e.staff.pop_per_staff), poolN: pool.length };
+  return _nkPeer;
+}
+function nkEntityByCity(pref, name){
+  if (!NKIDX) return null;
+  return NKIDX[pref+'|'+name] || null;
+}
+// ②人員の良好度スコア(-2..2連続値)。平均年齢=低いほど良好、職員1人当たり給水人口=低いほど良好(体制の厚み)。
+function nkStaffGood(pref, name){
+  const e = nkEntityByCity(pref, name);
+  const p = nkPeerStats();
+  if (!e || !p) return null;
+  const sAge = (typeof e.staff.avg_age==='number' && p.age.avg)? score5(e.staff.avg_age, p.age.avg, false).s : null;
+  const sPps = (typeof e.staff.pop_per_staff==='number' && p.pps.avg)? score5(e.staff.pop_per_staff, p.pps.avg, false).s : null;
+  return meanArr([sAge, sPps]);
+}
 
 /* ---------- スコア計算(定義書3.3: 乖離率方式) ---------- */
 let T1 = 5, T2 = 15; // ±5% / ±15% (デフォルト。感度分析で一時変更されるためlet)
@@ -315,6 +352,56 @@ function renderWater(){
     h += '</tr>';
   });
   h += '</table>'+legend();
+  /* ---- ②人員(体制)(D1: 公営企業年鑑R5/定義書v1.3案5.1) ---- */
+  h += '<h3>人員(体制)(切迫度軸②人員・重み10%/出典:地方公営企業年鑑 令和5年度決算)</h3>';
+  if (!NK){
+    h += '<div class="note-box"><b>年鑑データ未読込:</b> data/mef_nenkan_water_v1.json が読み込めないため、②人員は欠測扱いです(切迫度カバレッジは従来どおり90%上限)。リポジトリのdata/配下への配置をご確認ください。</div>';
+  } else {
+    const p = nkPeerStats();
+    h += '<p class="lead">スコア対象は<b>平均年齢</b>(高いほど切迫+)と<b>職員1人当たり給水人口</b>(高いほど少人数体制=切迫+)の2指標。比較基準は暫定で5県・末端給水・市町村営'+p.poolN+'事業の単純平均(D3で類似団体区分別平均へ差替予定)。職員数計・平均勤続年数は参考表示。</p>';
+    h += '<table><tr><th class="l">指標</th><th>単位</th>';
+    vBaseW.forEach(c=>{ h+='<th class="city-head">'+c.name+'</th>'; });
+    const vAddNk = ADDED.filter(a=>(!VISIBLE||VISIBLE.has(a.key)) && nkEntityByCity(a.pref,a.name));
+    vAddNk.forEach(a=>{ h+='<th class="city-head">'+esc(a.name)+'<span class="sr">(追加)</span></th>'; });
+    h += '<th>暫定5県平均</th></tr>';
+    const staffRows = [
+      {label:'職員数(計)', unit:'人', get:e=>e.staff.total, scored:false},
+      {label:'うち損益勘定/資本勘定', unit:'人', get:e=>(e.staff.profit===null&&e.staff.capital===null)?null:(fmt(e.staff.profit,0)+' / '+fmt(e.staff.capital,0)), scored:false, raw:true},
+      {label:'平均年齢', unit:'歳', get:e=>e.staff.avg_age, scored:true, avg:p.age.avg, dirHigh:false},
+      {label:'平均勤続年数', unit:'年', get:e=>e.staff.avg_tenure, scored:false},
+      {label:'職員1人当たり給水人口', unit:'人', get:e=>e.staff.pop_per_staff, scored:true, avg:p.pps.avg, dirHigh:false, d0:0}
+    ];
+    staffRows.forEach(sr=>{
+      h += '<tr><td class="l">'+sr.label+(sr.scored?'':' <span class="sr">(参考指標)</span>')+'</td><td>'+sr.unit+'</td>';
+      function cellFor(pref,name){
+        const e = nkEntityByCity(pref,name);
+        if (!e) return '<span class="chip na">年鑑非収録(企業団等給水区域/簡易水道)</span>';
+        const v = sr.get(e);
+        if (v===null||v===undefined) return '<span class="chip na">R5欠測</span>';
+        if (sr.raw) return v;
+        let out = fmt(v, sr.d0!==undefined?sr.d0:2);
+        if (sr.scored){
+          // 切迫方向の表示: 高いほど切迫のため良好度スコアを反転表示
+          const sc = score5(v, sr.avg, sr.dirHigh);
+          if (sc.s!==null){
+            const s = -sc.s; // 切迫表示(+=切迫)
+            const m = {"2":["sm2","切迫 大"],"1":["sm1","切迫 やや大"],"0":["s0","平均並み"],"-1":["s1","余裕 やや大"],"-2":["s2","余裕 大"]}[String(s)];
+            out += ' <span class="chip '+m[0]+'">'+m[1]+'</span><span class="dev">乖離 '+(sc.d>=0?'+':'')+(sc.d*100).toFixed(1)+'%</span>';
+          }
+        } else out += ' <span class="chip ref">参考</span>';
+        return out;
+      }
+      vBaseW.forEach(c=>{ h += '<td>'+cellFor(c.pref, c.name)+'</td>'; });
+      vAddNk.forEach(a=>{ h += '<td>'+cellFor(a.pref, a.name)+'</td>'; });
+      h += '<td>'+(sr.scored? fmt(sr.avg, sr.d0!==undefined?sr.d0:2)+'<span class="dev">n='+(sr.label==='平均年齢'?p.age.n:p.pps.n)+'</span>' : '−')+'</td></tr>';
+    });
+    h += '</table>';
+    h += '<div class="note-box plain"><b>②人員の注記(定義書v1.3案):</b> '
+      +'(1)平均年齢・平均勤続年数は会計年度任用職員を含みます(年鑑元票注2。定員管理調ベースの技術職員数とは定義が異なります)。'
+      +'(2)職員1人当たり給水人口は「少人数体制の切迫」と「執行効率の高さ」の両義性を持ちます。本軸は事業持続性(切迫度)の文脈で「高い=体制が薄い」と方向づけますが、断定的な優劣比較には用いません。'
+      +'(3)暫定比較基準(5県市町村営全体平均)には規模バイアスがあります(小規模団体ほど1人当たり給水人口が構造的に低い)。D3で類似団体区分別平均へ移行するまで、乖離率の絶対水準よりも市間の相対比較を主に読んでください。'
+      +'(4)年鑑非収録団体(企業団・県営給水区域、法非適簡易水道)の②人員は欠測とし、切迫度は重み再正規化で計算します。</div>';
+  }
   h += '<h3>構造フラグ(スコアと分離・注記表示/定義書3.4)</h3>';
   h += '<div class="note-box plain">'
     +'<span class="flag">簡易水道統合</span>中津川市:H29に旧簡易水道23事業等を統合。山間部小規模系統の包含により有収率・給水原価が構造的に悪化(給水人口密度296人/km²。湖西1,008・桑名1,010)。<br>'
@@ -405,11 +492,15 @@ function renderSewer(){
 /* ---------- データ充足率(定義書3.5: 軸ごと・市ごと) ---------- */
 const SUFF_DEF = {
   gen:  {total:9, label:"①一般会計", missing:["将来推計人口指数(社人研・取得予定)"]},
-  water:{total:9, label:"②水道",     missing:["繰出金の基準内外(決算状況調から取得予定)","技術職員数・年齢構成(取得予定)"]},
+  water:{total:9, label:"②水道",     missing:["繰出金の基準内外(決算状況調が正。D2で年鑑の繰入金計上区分による近似を導入予定)"]},
   sewer:{total:8, label:"②下水道",   missing:["有収率(処理水量ベース・未取得)","繰出金の基準内外(取得予定)"]}
 };
 function suffCards(axis){
-  const def = SUFF_DEF[axis];
+  let def = SUFF_DEF[axis];
+  // D1: 年鑑未読込時は水道の人員を欠測に戻す(表示と実計算の整合)
+  if (axis==='water' && !NK){
+    def = {total:def.total, label:def.label, missing:def.missing.concat(["技術職員数・年齢構成(年鑑データ未読込)"])};
+  }
   const have = def.total - def.missing.length;
   const pct = Math.round(have/def.total*1000)/10;
   const provisional = pct < 70;
@@ -498,6 +589,10 @@ function renderNotes(){
   const el = document.getElementById('pane-notes');
   let h = '<h2>注記・出典</h2><table><tr><th class="l" style="width:110px">区分</th><th class="l">内容</th></tr>';
   D.notes.forEach(n=>{ h+='<tr><td class="l">'+n.type+'</td><td class="l">'+n.text+'</td></tr>'; });
+  if (NK && NK.meta){
+    h += '<tr><td class="l">出典(D1追加)</td><td class="l">'+esc(NK.meta.source||'地方公営企業年鑑(水道)')+' / 対象:'+esc(NK.meta.scope||'')+' / 収録'+NK.entities.length+'事業。'
+       +'②人員(平均年齢・職員1人当たり給水人口)はここから取得。年鑑と経営比較分析表の同名指標(経常収支比率等)は算定・母集団が異なるため出典を混在させない(同名でも別指標/定義書v1.3案3.2)。'+((NK.meta.notes||[]).map(esc).join(' '))+'</td></tr>';
+  }
   h += '</table>';
   h += '<h3>基本情報(市・事業別)</h3><table><tr><th class="l">市・事業</th><th>類似団体区分</th><th>人口</th><th>給水/処理区域内人口</th><th>普及率%</th><th>家庭料金20m³</th><th>自己資本構成比率%</th><th>年度</th><th class="l">出典</th></tr>';
   D.basic_info.forEach(b=>{
@@ -777,7 +872,7 @@ async function cancelQual(id){
 }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 // 内部検証フック(UIからは不可視。実データには影響しない)
-window.__mefTest = { setSb:(x)=>{sb=x;}, setSession:(s)=>{session=s;}, renderQual:()=>renderQual(), renderMatrix:()=>renderMatrix(), computeAll:(w,t1,t2,q)=>computeAll(w,t1,t2,q), defW:()=>defaultWeightsNum(), route:()=>route() };
+window.__mefTest = { setSb:(x)=>{sb=x;}, setSession:(s)=>{session=s;}, renderQual:()=>renderQual(), renderMatrix:()=>renderMatrix(), computeAll:(w,t1,t2,q)=>computeAll(w,t1,t2,q), defW:()=>defaultWeightsNum(), route:()=>route(), setNk:(x)=>{NK=x; buildNkIdx(); _nkPeer=null;}, nkStaffGood:(p,n)=>nkStaffGood(p,n), nkPeerStats:()=>nkPeerStats(), renderWater:()=>renderWater(), renderGen:()=>renderGen(), renderSewer:()=>renderSewer() };
 
 /* ---------- マトリクス・感度分析(定義書2章・8章) ---------- */
 const QUAD_NAMES = {
@@ -909,7 +1004,9 @@ function cityComponents(c){
     const d = devRate(popRow[cKey], popRow[c.genAvgKey]);
     if (d!==null){ const pct=-d*100; popUrg = pct>T2?2 : pct>T1?1 : pct<-T2?-2 : pct<-T1?-1 : 0; }
   }
-  return {finance, aging, capex, fiscal, popUrg};
+  // ②人員(D1: 年鑑R5。良好度ベース。年鑑未読込・非収録団体はnull=欠測)
+  const staff = nkStaffGood(c.pref, c.name);
+  return {finance, aging, capex, fiscal, popUrg, staff};
 }
 // ③④有効値の取得(3市一括)
 async function loadQualEff(){
@@ -936,7 +1033,7 @@ function computeAll(w, t1, t2, qualEff){
     const uComps = {
       w2_finance: comp.finance!==null? normUrg(comp.finance):null,
       w2_aging:   comp.aging!==null?   normUrg(comp.aging):null,
-      w2_staff:   null, // 技術職員数 欠測
+      w2_staff:   (comp.staff!==null && comp.staff!==undefined)? normUrg(comp.staff) : null, // D1: 年鑑R5(平均年齢・職員1人当たり給水人口)。年鑑非収録団体は欠測
       w1_pop:     comp.popUrg!==null? (comp.popUrg+2)/4*100 : null,
       w3_signal:  meanArr([q['3-4']!==undefined? q['3-4']/3*100:null, q['3-5']!==undefined? q['3-5']/3*100:null])
     };
@@ -1230,7 +1327,9 @@ function addedComponents(a){
                          ss('①有形固定資産減価償却率',false), ss('②管渠老朽化率',false), ss('③管渠改善率',true)]);
   const capex = meanArr([ws('④企業債残高対給水収益比率',false), ss('④企業債残高対事業規模比率',false)]);
   const g = addedGenScores(a);
-  return {finance, aging, capex, fiscal:g.fiscal, popUrg:g.popUrg};
+  // ②人員(D1): 追加団体も「県|団体名」で年鑑末端給水と一致すれば付与(5県内のみ該当)
+  const staff = nkStaffGood(a.pref, a.name);
+  return {finance, aging, capex, fiscal:g.fiscal, popUrg:g.popUrg, staff};
 }
 
 /* ---------- 市町村追加(定義書3.6/指示書 画面要件5) ---------- */
@@ -1677,6 +1776,11 @@ function loadStatic(){
     .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
     .then(async json=>{
       D = json;
+      // D1: 年鑑(水道R5)の追加読込。失敗しても致命ではない(②人員が欠測に戻るのみ)
+      try{
+        const rn = await fetch('data/mef_nenkan_water_v1.json');
+        if (rn.ok){ NK = await rn.json(); buildNkIdx(); _nkPeer = null; }
+      }catch(e){ NK = null; NKIDX = null; }
       try{ await loadAdded(); }catch(e){/* 追加団体なしとして続行 */}
       syncVisible();
       document.getElementById('loading').style.display='none';
