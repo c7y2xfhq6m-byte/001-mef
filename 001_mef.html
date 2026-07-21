@@ -127,7 +127,6 @@ details.histbox summary{cursor:pointer; font-size:12px; color:var(--grey);}
   <button data-tab="add">市町村追加</button>
   <button data-tab="ts">時系列 R1–R5</button>
   <button data-tab="notes">注記・出典</button>
-  <button data-tab="diag">診断・ログイン</button>
 </nav>
 <main id="appMain" style="display:none">
   <div id="loading">静的データを読み込んでいます…</div>
@@ -143,6 +142,7 @@ details.histbox summary{cursor:pointer; font-size:12px; color:var(--grey);}
   <section id="pane-diag" class="tab-pane"></section>
 </main>
 <footer>
+  <div style="margin-bottom:8px"><button class="linklike" id="footDiag">システム診断</button> <span class="sr">(サインアップ拒否・匿名遮断の実挙動確認。Supabase設定変更後の点検用)</span></div>
   本ツールのスコアは「類似団体平均比の乖離率方式(±5%・±15%で5段階)」による分類の論理妥当性の検証装置であり、意思決定の代替ではありません(指標定義書1章・8章)。
   ①の類型平均は5県237団体による暫定値です。サウンディングの受容性・競合動向・個別の人的関係は本ツールの評価対象外です。
 </footer>
@@ -430,24 +430,62 @@ function renderTs(){
   const el = document.getElementById('pane-ts');
   const combos = [];
   D.timeseries.forEach(t=>{
-    const k = t.city+'|'+t.business;
-    if (!combos.includes(k)) combos.push(k);
+    const k = 'S¦'+t.city+'¦'+t.business;
+    if (!combos.some(c=>c.k===k)) combos.push({k, label:t.city+' '+t.business});
+  });
+  ADDED.forEach(a=>{
+    Object.keys(a.tsData||{}).forEach(biz=>{
+      combos.push({k:'A¦'+a.key+'¦'+biz, label:a.name+'(追加) '+biz});
+    });
   });
   let h = '<h2>時系列 R1–R5(参考ビュー)</h2>'
-    +'<p class="lead">基準年度統一(R5)の外側の参考情報です。スコア計算には使用しません(R6以降の切迫シグナルは③の定性入力で反映/定義書3.1)。桑名市はR1値なし(R6分析表の掲載期間による。3か年平均には影響なし)。</p>'
+    +'<p class="lead">基準年度統一(R5)の外側の参考情報です。スコア計算には使用しません(R6以降の切迫シグナルは③の定性入力で反映/定義書3.1)。桑名市はR1値なし(R6分析表の掲載期間による。3か年平均には影響なし)。追加団体は取込んだ分析表の掲載期間を表示します(R6決算版ならR2〜R6)。</p>'
     +'<label>市・事業: <select id="tsSel">';
-  combos.forEach(k=>{ const [c,b]=k.split('|'); h+='<option value="'+k+'">'+c+' '+b+'</option>'; });
+  combos.forEach(c=>{ h+='<option value="'+esc(c.k)+'">'+esc(c.label)+'</option>'; });
   h += '</select></label><div id="tsTable"></div>';
   el.innerHTML = h;
+  const yearNum = fy => fy.startsWith('R')? parseInt(fy.slice(1),10) : parseInt(fy.slice(1),10)-30; // H30→0
+  const canonOrder = ind => {
+    const m=String(ind).match(/^[①-⑳]/);
+    return m? '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳'.indexOf(m[0]) : 99;
+  };
   const draw = ()=>{
-    const [city,biz] = document.getElementById('tsSel').value.split('|');
-    let t = '<table><tr><th class="l">指標</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th><th>R3-R5平均</th></tr>';
-    D.timeseries.filter(x=>x.city===city&&x.business===biz).forEach(x=>{
-      t += '<tr><td class="l">'+x.indicator+'</td><td>'+fmt(x.R1)+'</td><td>'+fmt(x.R2)+'</td><td>'+fmt(x.R3)+'</td><td>'+fmt(x.R4)+'</td><td>'+fmt(x.R5)+'</td><td>'+fmt(x.avg_R3R5)+'</td></tr>';
-    });
-    t += '</table>';
-    if (city==='桑名市' && biz==='公共下水道'){
-      t += '<div class="note-box plain">桑名市公共下水道の施設利用率はR4に算定方法修正(単独+流域関連の合算に変更)。R2-R3値はR4以降と非連続。</div>';
+    const val=document.getElementById('tsSel').value;
+    const parts=val.split('¦');
+    let t='';
+    if (parts[0]==='S'){
+      const [_,city,biz]=parts;
+      t = '<table><tr><th class="l">指標</th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th><th>R3-R5平均</th></tr>';
+      D.timeseries.filter(x=>x.city===city&&x.business===biz).forEach(x=>{
+        t += '<tr><td class="l">'+x.indicator+'</td><td>'+fmt(x.R1)+'</td><td>'+fmt(x.R2)+'</td><td>'+fmt(x.R3)+'</td><td>'+fmt(x.R4)+'</td><td>'+fmt(x.R5)+'</td><td>'+fmt(x.avg_R3R5)+'</td></tr>';
+      });
+      t += '</table>';
+      if (city==='桑名市' && biz==='公共下水道'){
+        t += '<div class="note-box plain">桑名市公共下水道の施設利用率はR4に算定方法修正(単独+流域関連の合算に変更)。R2-R3値はR4以降と非連続。</div>';
+      }
+    } else {
+      const [_,key,biz]=parts;
+      const a=ADDED.find(x=>x.key===key);
+      const data=a? a.tsData[biz] : null;
+      if (!data){ document.getElementById('tsTable').innerHTML='<p class="lead">データがありません。</p>'; return; }
+      // 年度列: 取込済み年度の和集合を年度順に
+      const yset=new Set();
+      Object.values(data).forEach(ym=>Object.keys(ym).forEach(y=>yset.add(y)));
+      const years=[...yset].sort((x,y2)=>yearNum(x)-yearNum(y2));
+      t = '<table><tr><th class="l">指標<br><span class="sr">上段:当該値/下段:類似平均</span></th>'
+        + years.map(y=>'<th>'+y+'</th>').join('') + '<th>R3-R5平均<br><span class="sr">(当該値)</span></th></tr>';
+      Object.keys(data).sort((x,y2)=>canonOrder(x)-canonOrder(y2)).forEach(ind=>{
+        const ym=data[ind];
+        const r35=['R3','R4','R5'].map(y=>ym[y]?ym[y].self:undefined).filter(v=>typeof v==='number');
+        const avg35=r35.length===3? r35.reduce((p,c)=>p+c,0)/3 : null;
+        t += '<tr><td class="l">'+esc(ind)+'</td>'
+          + years.map(y=>{
+              const c=ym[y]||{};
+              return '<td>'+fmt(c.self)+'<span class="dev">'+fmt(c.peer)+'</span></td>';
+            }).join('')
+          + '<td>'+fmt(avg35)+'</td></tr>';
+      });
+      t += '</table><p class="legend">出典:取込済み経営比較分析表(当該値・類似団体平均)。R5を含まない取込の場合、R3-R5平均は算出されません。</p>';
     }
     document.getElementById('tsTable').innerHTML = t;
   };
@@ -474,14 +512,14 @@ function fmt2(v){ return (v===null||v===undefined)?'−':(typeof v==='number'?fm
 function renderDiag(){
   const el = document.getElementById('pane-diag');
   el.innerHTML =
-   '<h2>診断・ログイン</h2>'
+   '<h2>システム診断</h2>'
   +'<p class="lead">セキュリティ設計(引き継ぎ書§4.2/§4.3/§5.1)が実挙動として機能していることを確認します。①②は公表統計のため未ログインで閲覧可。③④入力・重み設定(段階(2)以降)はログイン必須です。</p>'
   +'<div class="diag-item"><b>0. 接続設定(config.js)</b><div class="res" id="diag0"></div></div>'
   +'<div class="diag-item"><b>1. 匿名アクセス遮断テスト</b> — 未ログイン状態でSupabaseのデータ読取が拒否されることを確認(GRANTをauthenticatedのみに限定した設計の実挙動確認)<br>'
   +'<button class="btn" id="btnDiag1">実行</button><div class="res" id="diag1"></div></div>'
   +'<div class="diag-item"><b>2. サインアップ拒否テスト</b> — ダミーメールでの自己登録が「Signups not allowed」で拒否されることを確認(招待制の生命線・チェックリストC-1の実挙動確認)<br>'
   +'<button class="btn" id="btnDiag2">実行</button><div class="res" id="diag2"></div></div>'
-  +'<div class="diag-item"><b>3. ログイン状態</b> — ログインは入口画面で行います(ログアウトは画面右上)<br><div class="res" id="diag3"></div></div>'
+  +'<div class="diag-item"><b>3. ログイン状態</b><div class="res" id="diag3"></div></div>'
   +'<div class="diag-item"><b>4. 認証後読取テスト</b> — ログイン状態でデフォルト重みプリセット(定義書8章)が読めることを確認<br>'
   +'<button class="btn" id="btnDiag4">実行</button><div class="res" id="diag4"></div></div>';
 
@@ -569,6 +607,12 @@ function updateAuthUi(){
   const qp = document.getElementById('pane-qual');
   if (qp && qp.classList.contains('show')) renderQual();
 }
+document.getElementById('footDiag').addEventListener('click', ()=>{
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('show'));
+  document.getElementById('pane-diag').classList.add('show');
+  window.scrollTo(0,0);
+});
 document.getElementById('btnHeadLogout').addEventListener('click', async ()=>{
   if (sb) await sb.auth.signOut();
   appStarted=false; // 再ログイン時に再初期化
@@ -1291,11 +1335,25 @@ async function _loadAddedImpl(){
       sewer[biz][ind]={v:get('sewer',biz,ind,'R5','self'), avg:get('sewer',biz,ind,'R5','peer_avg'),
                        avg3: ind==='⑤経費回収率'? avg3('sewer',biz,ind):null};
     }));
+    // 時系列タブ用: 事業ラベル→指標→年度→{self,peer}
+    const tsData={};
+    rows.forEach(r=>{
+      if (r.axis!=='water' && r.axis!=='sewer') return;
+      const biz = r.axis==='water'? '水道' : r.business;
+      if (!biz) return;
+      if (!tsData[biz]) tsData[biz]={};
+      if (!tsData[biz][r.indicator]) tsData[biz][r.indicator]={};
+      if (!tsData[biz][r.indicator][r.fiscal_year]) tsData[biz][r.indicator][r.fiscal_year]={};
+      const slot = tsData[biz][r.indicator][r.fiscal_year];
+      // effと同じ「最新行が有効」規則(rowsはcreated_at降順なので先勝ち)
+      if (r.series==='self' && slot.self===undefined) slot.self=r.value;
+      if (r.series==='peer_avg' && slot.peer===undefined) slot.peer=r.value;
+    });
     const kj = KESSAN? KESSAN[m.municipality_key] : null;
     built.push({key:m.municipality_key, name:m.name, pref:m.prefecture,
       muniType:m.muni_type||(kj?kj['類型']:null), similar_groups:m.similar_groups||{},
       kessan:kj||null, water, sewer,
-      hasWater:Object.keys(water).length>0, sewerBiz:Object.keys(sewer)});
+      hasWater:Object.keys(water).length>0, sewerBiz:Object.keys(sewer), tsData});
   });
   ADDED = built;
 }
@@ -1557,7 +1615,7 @@ async function doCommit(){
 async function refreshDashboards(){
   try{ await loadAdded(); }catch(e){ return; }
   syncVisible();
-  if (D){ renderGen(); renderWater(); renderSewer(); }
+  if (D){ renderGen(); renderWater(); renderSewer(); renderTs(); }
 }
 
 /* ---------- タブ・初期化 ---------- */
@@ -1570,6 +1628,7 @@ document.getElementById('nav').addEventListener('click', e=>{
   if (e.target.dataset.tab==='qual') renderQual();
   if (e.target.dataset.tab==='matrix') renderMatrix();
   if (e.target.dataset.tab==='add') renderAdd();
+  if (e.target.dataset.tab==='ts') renderTs();
 });
 
 /* ---------- 起動: 認証ファースト(入口ゲート) ---------- */
