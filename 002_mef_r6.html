@@ -196,6 +196,24 @@ details.hist tr.del{color:#B8B8B8; text-decoration:line-through}
   vertical-align:middle; margin:0 5px; position:relative}
 .covbar span{position:absolute; left:0; top:0; bottom:0; background:var(--ink2); border-radius:3px}
 .prov{font-size:10.5px; color:var(--warn-deep); border:1px solid var(--warn); border-radius:2px; padding:0 5px}
+
+/* ---------- 重み編集 ---------- */
+.wrow{display:flex; align-items:center; gap:9px; padding:4px 0; flex-wrap:wrap}
+.wrow .wl{flex:1 1 300px; font-size:12px; color:var(--ink2)}
+.wrow input[type=range]{flex:0 0 130px}
+.wrow input[type=number]{width:58px; padding:3px 6px; border:1px solid var(--rule); border-radius:2px;
+  text-align:right; font-variant-numeric:tabular-nums}
+.wsum{font-size:11.5px; color:var(--ink2); padding:5px 0}
+.wsum b{font-variant-numeric:tabular-nums}
+.wsum.off b{color:var(--warn-deep)}
+.wact{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:10px 0 0}
+.wact button{padding:5px 13px; border:1px solid var(--rule); border-radius:2px; background:var(--paper);
+  font-size:12.5px; cursor:pointer; color:var(--ink)}
+.wact button.primary{background:var(--brand); color:#fff; border-color:var(--brand); font-weight:700}
+.trial{font-size:11px; color:var(--warn-deep); border:1px solid var(--warn); border-radius:2px;
+  padding:1px 7px; background:#FDF4EA}
+.sens li{font-size:12px; padding:2px 0}
+.sens .chg{color:var(--warn-deep); font-weight:600}
 @media (max-width:760px){
   .purpose{display:none}
   thead th.l{min-width:132px}
@@ -290,6 +308,10 @@ const QUAL_DEF=[
 ];
 let QE={};          /* {muni_key:{item_code:level}} 有効値 */
 let qualRows=[], qualCity=null;
+let MXW=null;        /* 現在の重み {urgency:{k:num},capacity:{k:num}} */
+let MXW_SAVED=null;  /* 既定として保存されている重み（比較用） */
+let MXW_TRIAL=false; /* 試行中フラグ */
+let MXRAT={urgency:'',capacity:''};
 
 /* ---------- 重み（定義書8章。②70／①10／③20 の配分は維持し、②の内訳を細分） ---------- */
 const DEFAULT_W={
@@ -319,6 +341,13 @@ const FAM={
   '⑦施設利用率':'ops','⑧有収率':'ops','⑧水洗化率':'ops',
   '④企業債残高対給水収益比率':'cap','④企業債残高対事業規模比率':'cap'};
 const NKFAM={'_平均年齢':'staff','_職員1人当たり給水人口':'staff','_基準外繰入依存度':'cap'};
+const RAT0={
+  urgency:'包括委託・コンセッションの一次的な動機は財務と更新需要の逼迫であるため②を70%とし、決算年度統一で落ちる直近シグナルを③20%で補完する。②人員は「体制が脆弱」と「委託により民間へ移管済み」の双方を意味し得るため5%に留める。',
+  capacity:'長期契約の成立可否は財政の支払能力と制度・調達の準備度に依存する。令和9年度国費要件（3-1・3-2）は市場参入トリガーであるため③の中で重み2倍とする。'};
+function wNum(){ const o={urgency:{},capacity:{}};
+  ['urgency','capacity'].forEach(ax=>Object.keys(DEFAULT_W[ax]).forEach(k=>o[ax][k]=DEFAULT_W[ax][k].weight));
+  return o; }
+function W(){ return MXW || wNum(); }
 
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fx=(v,d)=>(v===null||v===undefined||isNaN(v))?'—':Number(v).toFixed(d===undefined?2:d);
@@ -410,15 +439,15 @@ function compOf(key){
     syn:avg(['4-1','4-2','4-3'].map(k=>q[k]!==undefined?q[k]/3*100:null))
   };
 }
-function axis(comps,defw){
+function axis(comps,wmap){
   let n=0,d=0,cov=0,tot=0;
-  Object.keys(defw).forEach(k=>{ const w=defw[k].weight; tot+=w;
+  Object.keys(wmap).forEach(k=>{ const w=wmap[k]; tot+=w;
     if(comps[k]!==null&&comps[k]!==undefined){ n+=comps[k]*w; d+=w; cov+=w; } });
   return {s:d>0?n/d:null, cov:tot>0?cov/tot*100:0};
 }
-function scoreOf(key){
-  const c=compOf(key);
-  const U=axis(c.u,DEFAULT_W.urgency), C=axis(c.c,DEFAULT_W.capacity);
+function scoreOf(key,wts){
+  const w=wts||W(), c=compOf(key);
+  const U=axis(c.u,w.urgency), C=axis(c.c,w.capacity);
   const quad=(U.s===null||C.s===null)?null:(U.s>=50?(C.s>=50?'hh':'hl'):(C.s>=50?'lh':'ll'));
   return {u:U.s,c:C.s,uCov:U.cov,cCov:C.cov,syn:c.syn,quad,
           prov:(U.cov<70||C.cov<70),comps:c};
@@ -579,17 +608,103 @@ function renderMatrix(){
       +'<td class="l" style="font-size:11px">切迫 '+cb(s.uCov)+'／受入 '+cb(s.cCov)+'</td></tr>';
   });
   h+='</tbody></table></div>';
-  /* 重み表 */
-  h+='<h3>重み（定義書8章のデフォルト）</h3><div class="scroll"><table><thead><tr><th class="l">軸</th><th class="l">構成要素</th><th>重み</th></tr></thead><tbody>';
+  h+=weightPanel()+sensPanel();
+  return h;
+}
+
+/* ---------- 重み編集 ---------- */
+function weightPanel(){
+  const w=W(), dirty=MXW_SAVED?JSON.stringify(w)!==JSON.stringify(MXW_SAVED):JSON.stringify(w)!==JSON.stringify(wNum());
+  let h='<h3>重み'+(MXW_TRIAL?' <span class="trial">試行中（保存されていません）</span>':'')+'</h3>'
+   +'<p class="sub">定義書8章のデフォルトです。値を動かすと画面上の判定が即座に変わりますが、<b>「試行」は保存されません</b>。全員が見る既定値を変えるときは根拠を記録して保存してください。</p>';
   ['urgency','capacity'].forEach(ax=>{
     const nm=ax==='urgency'?'切迫度':'受入能力';
-    Object.keys(DEFAULT_W[ax]).forEach((k,i)=>{
-      h+='<tr><td class="l ind">'+(i===0?nm:'')+'</td><td class="l" style="font-size:12px">'
-        +esc(DEFAULT_W[ax][k].label)+'</td><td class="num">'+DEFAULT_W[ax][k].weight+'</td></tr>'; });
+    const sum=Object.keys(w[ax]).reduce((s,k)=>s+w[ax][k],0);
+    h+='<h4 class="sec">'+nm+'</h4>';
+    Object.keys(DEFAULT_W[ax]).forEach(k=>{
+      h+='<div class="wrow"><span class="wl">'+esc(DEFAULT_W[ax][k].label)+'</span>'
+        +'<input type="range" min="0" max="60" step="5" value="'+w[ax][k]+'" data-w="'+ax+'|'+k+'">'
+        +'<input type="number" min="0" max="100" step="1" value="'+w[ax][k]+'" data-w="'+ax+'|'+k+'">'
+        +'<span class="pool">既定 '+DEFAULT_W[ax][k].weight+'</span></div>';
+    });
+    h+='<div class="wsum'+(sum===100?'':' off')+'">合計 <b>'+sum+'</b>'
+      +(sum===100?'':'（100以外でも重み比で正規化して計算します）')+'</div>';
   });
-  h+='</tbody></table></div>';
-  h+='<div class="note"><b>②人員の重みについて：</b>従前10から5へ低減しています。職員1人当たり給水人口が大きいことは体制の脆弱さと包括委託等による民間移管済みの双方を意味し得るため、単独の切迫シグナルとしての比重を下げました。②全体（70）・①（10）・③（20）の配分は変えていません。</div>';
+  h+='<div class="wact">'
+   +'<button data-wact="reset">既定に戻す</button>'
+   +'<button data-wact="revert"'+(MXW_SAVED?'':' disabled')+'>保存済みの設定に戻す</button>'
+   +'<button class="primary" data-wact="save"'+(dirty?'':' disabled')+'>既定として保存…</button>'
+   +'<span class="msg" id="wmsg"></span></div>'
+   +'<div class="note"><b>切迫度の根拠：</b>'+esc(MXRAT.urgency||RAT0.urgency)+'</div>'
+   +'<div class="note"><b>受入能力の根拠：</b>'+esc(MXRAT.capacity||RAT0.capacity)+'</div>';
   return h;
+}
+/* ---------- 感度分析：重みを±10動かして分類が変わるか ---------- */
+function sensPanel(){
+  const base=W(), b={}; SEL.forEach(k=>b[k]=scoreOf(k,base));
+  const hits=[];
+  ['urgency','capacity'].forEach(ax=>{
+    Object.keys(base[ax]).forEach(k=>{
+      [-10,10].forEach(dl=>{
+        const w=JSON.parse(JSON.stringify(base));
+        w[ax][k]=Math.max(0,w[ax][k]+dl);
+        SEL.forEach(key=>{
+          const r=scoreOf(key,w), o=b[key];
+          if(o.quad&&r.quad&&o.quad!==r.quad)
+            hits.push({muni:muni(key).muni,label:DEFAULT_W[ax][k].label,dl:dl,
+                       from:QUAD[o.quad][0],to:QUAD[r.quad][0]});
+        });
+      });
+    });
+  });
+  let h='<h3>感度分析</h3><p class="sub">各構成要素の重みを±10ポイント動かしたとき、提案類型（象限）が変わるかを総当たりで確認します。変化が出る場合、その分類は重みの置き方に依存しており、単独では判断根拠になりません。</p>';
+  if(!SEL.length) return h;
+  if(!hits.length) h+='<p class="sub">選択中の団体では、±10ポイントの範囲で提案類型は変わりません（分類は頑健です）。</p>';
+  else{
+    h+='<ul class="plist sens">'+hits.map(x=>'<li><span class="k">'+esc(x.muni)+'</span>'
+      +esc(x.label.split('（')[0])+' を '+(x.dl>0?'+':'')+x.dl+' → <span class="chg">'
+      +esc(x.from)+' から '+esc(x.to)+' へ変化</span></li>').join('')+'</ul>'
+      +'<div class="note warnbox"><b>解釈：</b>上記の団体は象限の境界付近にあります。'
+      +'重みを動かすと分類が変わるため、提案類型は幅を持って読み、③④の入力充足を優先してください。</div>';
+  }
+  return h;
+}
+async function saveWeights(){
+  const msg=document.getElementById('wmsg');
+  const ru=prompt('切迫度の重みの根拠を記録してください（必須）', MXRAT.urgency||RAT0.urgency);
+  if(ru===null) return;
+  if(!ru.trim()){ msg.className='msg err'; msg.textContent='根拠は必須です'; return; }
+  const rc=prompt('受入能力の重みの根拠を記録してください（必須）', MXRAT.capacity||RAT0.capacity);
+  if(rc===null) return;
+  if(!rc.trim()){ msg.className='msg err'; msg.textContent='根拠は必須です'; return; }
+  const name=prompt('この設定の名称', '既定（'+new Date().toISOString().slice(0,10)+' 更新）');
+  if(name===null) return;
+  msg.className='msg'; msg.textContent='保存中…';
+  const w=W(), payload={urgency:{rationale:ru.trim()},capacity:{rationale:rc.trim()},
+    deviation_thresholds:{t1_pct:5,t2_pct:15},
+    scoring:'robust_z',updated_by:(session.user&&session.user.email)||null};
+  ['urgency','capacity'].forEach(ax=>Object.keys(w[ax]).forEach(k=>{ payload[ax][k]={weight:w[ax][k]}; }));
+  const r=await sb.from('weight_settings').insert({preset_name:name,payload:payload,is_default:true});
+  if(r.error){ msg.className='msg err'; msg.textContent='保存失敗: '+r.error.message; return; }
+  MXW_SAVED=JSON.parse(JSON.stringify(w)); MXW_TRIAL=false;
+  MXRAT={urgency:ru.trim(),capacity:rc.trim()};
+  msg.className='msg ok'; msg.textContent='既定として保存しました';
+  setTimeout(draw,600);
+}
+async function loadWeights(){
+  if(!sb||!session||MXW) return;
+  MXW=wNum();
+  try{
+    const r=await sb.from('weight_settings').select('payload').eq('is_default',true).limit(1);
+    if(r.data&&r.data.length){
+      const p=r.data[0].payload;
+      ['urgency','capacity'].forEach(ax=>Object.keys(MXW[ax]).forEach(k=>{
+        if(p[ax]&&p[ax][k]&&typeof p[ax][k].weight==='number') MXW[ax][k]=p[ax][k].weight; }));
+      MXRAT={urgency:(p.urgency&&p.urgency.rationale)||RAT0.urgency,
+             capacity:(p.capacity&&p.capacity.rationale)||RAT0.capacity};
+      MXW_SAVED=JSON.parse(JSON.stringify(MXW));
+    }
+  }catch(e){/* デフォルトを使用 */}
 }
 
 /* ---------- ③④ 定性入力（Supabase） ---------- */
@@ -822,7 +937,7 @@ function drawTabs(){
 }
 async function draw(){
   drawSel(); drawTabs();
-  if(sb&&session&&SEL.length) await loadQE();
+  if(sb&&session){ await loadWeights(); if(SEL.length) await loadQE(); }
   const el=document.getElementById('main');
   if(!SEL.length){ el.innerHTML='<p class="sub">県を選び、団体を選択してください。同時表示は'+MAXSEL+'団体までです。</p>'; return; }
   if(TAB==='gen') el.innerHTML=renderGen();
@@ -836,7 +951,11 @@ async function draw(){
   else if(TAB==='ts'){ el.innerHTML='<p class="sub">時系列を読み込んでいます…</p>'; el.innerHTML=await renderTs(); }
 }
 document.addEventListener('change',e=>{ if(e.target.id==='pref'){ PREF=e.target.value; drawSel(); }});
-document.addEventListener('input',e=>{ if(e.target.id==='q'){ Q=e.target.value.trim(); drawSel(); }});
+document.addEventListener('input',e=>{
+  if(e.target.id==='q'){ Q=e.target.value.trim(); drawSel(); return; }
+  const spec=e.target.getAttribute&&e.target.getAttribute('data-w');
+  if(spec) setW(spec,e.target.value);
+});
 document.addEventListener('click',e=>{
   const del=e.target.getAttribute&&e.target.getAttribute('data-del');
   if(del){ SEL=SEL.filter(x=>x!==del); draw(); return; }
@@ -846,8 +965,18 @@ document.addEventListener('click',e=>{
     else { if(SEL.length>=MAXSEL) SEL.shift(); SEL.push(k); }
     draw(); return; }
   const t=e.target.closest('nav button');
-  if(t&&!t.disabled){ TAB=t.dataset.t; draw(); }
+  if(t&&!t.disabled){ TAB=t.dataset.t; draw(); return; }
+  const a=e.target.getAttribute&&e.target.getAttribute('data-wact');
+  if(a==='reset'){ MXW=wNum(); MXW_TRIAL=JSON.stringify(MXW)!==JSON.stringify(MXW_SAVED||wNum()); draw(); }
+  else if(a==='revert'&&MXW_SAVED){ MXW=JSON.parse(JSON.stringify(MXW_SAVED)); MXW_TRIAL=false; draw(); }
+  else if(a==='save'){ saveWeights(); }
 });
+function setW(spec,val){
+  const p=spec.split('|'); if(!MXW) MXW=wNum();
+  MXW[p[0]][p[1]]=Math.max(0,Math.min(100,parseInt(val,10)||0));
+  MXW_TRIAL=JSON.stringify(MXW)!==JSON.stringify(MXW_SAVED||wNum());
+  draw();
+}
 
 /* ============================================================
    認証・起動
@@ -900,6 +1029,8 @@ initAuth();
 window.__mef={setD:d=>{D=d;},setSel:s=>{SEL=s;},setTab:t=>{TAB=t;},draw:()=>draw(),
   axesOf:k=>axesOf(k),scoreOf:k=>scoreOf(k),compOf:k=>compOf(k),diverges:c=>diverges(c),
   setQE:q=>{QE=q;},getQE:()=>QE,W:DEFAULT_W,QUAL_DEF:QUAL_DEF,
+  getW:()=>W(),setWt:(ax,k,v)=>{ if(!MXW) MXW=wNum(); MXW[ax][k]=v; MXW_TRIAL=true; },
+  isTrial:()=>MXW_TRIAL,
   bypass:()=>{session={user:{email:'test'}};route();}};
 </script>
 </body>
