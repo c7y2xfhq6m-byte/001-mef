@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MEF R6 — 市町村評価共通フレームワーク</title>
+<!--
+  ============================================================
+  MEF 002_mef_r6.html  （R6版・001_mef.html とは別ファイルで並行稼働）
+  設計正本: 指標定義書v1.4案 / 本ファイル冒頭の確定事項
+  確定した設計判断:
+    決定1 採点方式  ロバストz =(値-中央値)/(1.4826*MAD) ±3クリップ、帯域 ±0.674/±2.0
+                    （乖離率方式±5%/±15%は指標ごとの分散差を無視するため廃止）
+    決定2 ④企業債=0  按分・一体経理による過小計上の疑いがあるため当該指標を除外
+    決定3 退化プール  中央値0かつMAD=0で相対比較が成立しない指標は絶対基準へ切替
+    決定4 表示の主従  composite・群内順位は参照値。主表示は指標プロファイルと絶対基準
+    決定5 ①一般会計  制度上の閾値がある指標は絶対基準を主、ない指標は相対（ロバストz）
+    判断1 MEF2軸     指標単位で切迫度／受入能力へ振り分け（A/B/C軸は事業診断タブ独自）
+    判断2 基準年度   年鑑R6の採用により①②③・年鑑由来指標のすべてがR6。年度混在なし
+    判断3 団体選択   県→団体の2段選択（検索付き・同時表示4団体）
+  データ:
+    data/mef_app_r6.json        起動時
+    data/mef_app_ts_r6.json     時系列タブで遅延読込
+    data/mef_app_kessan_r6.json 決算タブで遅延読込
+  未実装（第2段）: ③④入力・データ取込（Supabase連携。001_mef.html の実装を移植予定）
+  ============================================================
+-->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+:root{
+  --paper:#FFFFFF; --ink:#333333; --ink2:#5F5F5F; --muted:#888888;
+  --rule:#D9D9D9; --rule2:#EDEDED; --wash:#FAFAF9;
+  --brand:#E60012;              /* UIアクセント専用。指標判定には使用しない */
+  --warn:#EF8200; --warn-deep:#A85400;
+  --good:#2E8B77; --good-deep:#1B6B58;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--paper); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+  font-size:14px; line-height:1.65; -webkit-text-size-adjust:100%}
+.num{font-variant-numeric:tabular-nums lining-nums; font-feature-settings:"tnum" 1}
+button,input,select{font:inherit}
+a{color:var(--ink)}
+
+/* ---------- ログイン ---------- */
+#gate{max-width:420px; margin:56px auto; padding:0 16px}
+#gate h1{font-size:17px; font-weight:700; border-left:4px solid var(--brand); padding-left:9px; margin:0 0 10px}
+#gate p{font-size:12.5px; color:var(--ink2); line-height:1.7}
+#gate input{width:100%; padding:9px 10px; border:1px solid var(--rule); border-radius:2px; margin-bottom:9px}
+#gate .go{width:100%; padding:10px; background:var(--brand); color:#fff; border:0; border-radius:2px;
+  font-weight:700; cursor:pointer}
+#gateErr{font-size:12px; color:var(--warn-deep); min-height:1.4em; display:block; margin-top:7px}
+
+/* ---------- ヘッダ ---------- */
+header{position:sticky; top:0; z-index:40; background:var(--paper); border-bottom:1px solid var(--rule)}
+.bar{display:flex; align-items:baseline; gap:13px; padding:10px 16px 8px; flex-wrap:wrap}
+.mark{font-weight:800; letter-spacing:.02em; font-size:15px}
+.mark i{font-style:normal; color:var(--brand)}
+.fy{font-size:11px; letter-spacing:.06em; color:var(--ink2); border:1px solid var(--rule);
+  border-radius:2px; padding:1px 7px; white-space:nowrap}
+.purpose{margin-left:auto; font-size:11.5px; color:var(--ink2); text-align:right; max-width:46ch; line-height:1.45}
+.purpose b{color:var(--ink); font-weight:600}
+.who{font-size:11px; color:var(--muted)}
+.who button{background:none; border:1px solid var(--rule); border-radius:2px; font-size:11px;
+  padding:1px 8px; margin-left:6px; cursor:pointer; color:var(--ink2)}
+
+/* ---------- セレクタ ---------- */
+.sel{display:flex; gap:11px; align-items:flex-start; padding:8px 16px 10px; background:var(--wash);
+  border-bottom:1px solid var(--rule); flex-wrap:wrap}
+.sel .lab{font-size:11px; letter-spacing:.08em; color:var(--muted); padding-top:6px; white-space:nowrap}
+.sel select,.sel input[type=search]{font-size:13px; padding:4px 8px; border:1px solid var(--rule);
+  border-radius:2px; background:var(--paper); color:var(--ink)}
+.sel input[type=search]{width:130px}
+.chips{display:flex; flex-wrap:wrap; gap:5px; flex:1 1 420px; max-height:118px; overflow-y:auto}
+.mchip{font-size:12.5px; padding:3px 9px; border:1px solid var(--rule); border-radius:2px;
+  background:var(--paper); cursor:pointer; color:var(--ink2)}
+.mchip[aria-pressed="true"]{border-color:var(--ink); color:var(--ink); font-weight:600;
+  box-shadow:inset 0 -2px 0 var(--brand)}
+.mchip:focus-visible{outline:2px solid var(--brand); outline-offset:1px}
+.cap{font-size:11px; color:var(--muted); padding-top:6px; white-space:nowrap}
+.picked{display:flex; gap:5px; flex-wrap:wrap; padding:0 16px 8px; background:var(--wash);
+  border-bottom:1px solid var(--rule)}
+.picked .p{font-size:11.5px; border:1px solid var(--ink); border-radius:2px; padding:1px 6px;
+  background:var(--paper)}
+.picked .p b{font-weight:600}
+.picked .p span{color:var(--muted); cursor:pointer; margin-left:5px}
+
+/* ---------- タブ ---------- */
+nav{display:flex; overflow-x:auto; border-bottom:1px solid var(--rule); padding:0 8px;
+  -webkit-overflow-scrolling:touch}
+nav button{font-size:13px; background:none; border:0; color:var(--muted); padding:9px 13px;
+  cursor:pointer; white-space:nowrap; border-bottom:2px solid transparent}
+nav button[aria-selected="true"]{color:var(--ink); font-weight:700; border-bottom-color:var(--brand)}
+nav button[disabled]{color:#C4C4C4; cursor:not-allowed}
+nav button[disabled]::after{content:"第2段"; font-size:9px; margin-left:5px; color:#C4C4C4;
+  border:1px solid #E4E4E4; border-radius:2px; padding:0 3px}
+
+main{padding:16px 16px 72px; max-width:1500px}
+h2{font-size:16px; font-weight:700; margin:0 0 4px}
+.sub{font-size:12px; color:var(--ink2); margin:0 0 13px; max-width:80ch}
+h3{font-size:13px; font-weight:700; margin:22px 0 6px; padding-bottom:3px; border-bottom:1px solid var(--rule)}
+h4.sec{font-size:12px; font-weight:700; color:var(--ink2); margin:16px 0 4px}
+
+/* ---------- 表 ---------- */
+.scroll{overflow-x:auto; -webkit-overflow-scrolling:touch}
+table{border-collapse:collapse; width:100%; margin:6px 0 4px}
+th,td{border-bottom:1px solid var(--rule2); padding:7px 9px; text-align:right; vertical-align:top}
+th{font-size:11px; font-weight:600; color:var(--ink2); letter-spacing:.03em;
+  border-bottom:1px solid var(--rule); white-space:nowrap; text-align:right}
+th.l,td.l{text-align:left}
+thead th.l{min-width:200px}
+tbody tr:hover{background:var(--wash)}
+.ind{font-size:12.5px}
+.ind .no{color:var(--muted); font-weight:400; margin-right:2px}
+.unit{font-size:10.5px; color:var(--muted); display:block; font-weight:400}
+
+/* ---------- 二基準セル ---------- */
+.cell{display:flex; flex-direction:column; align-items:flex-end; gap:3px; min-width:120px}
+.cell.diverge{border-left:2px solid var(--warn); margin-left:-9px; padding-left:7px}
+.v{font-size:15px; font-weight:600; letter-spacing:-.01em}
+.v.na{font-size:12px; font-weight:400; color:var(--muted)}
+.rel{font-size:10.5px; padding:1px 6px; border-radius:9px; color:#fff; white-space:nowrap}
+.rel.g2{background:var(--good-deep)} .rel.g1{background:var(--good)}
+.rel.n0{background:var(--muted)}
+.rel.w1{background:var(--warn)} .rel.w2{background:var(--warn-deep)}
+.rel.off{background:none; color:var(--muted); border:1px dashed var(--rule); border-radius:2px}
+.abs{font-size:10.5px; padding:0 5px; border-radius:2px; border:1px solid; white-space:nowrap;
+  display:inline-flex; align-items:center; gap:3px; max-width:200px}
+.abs.ok{border-color:var(--good); color:var(--good-deep)}
+.abs.mid{border-color:var(--rule); color:var(--muted)}
+.abs.bad1{border-color:var(--warn); color:var(--warn-deep)}
+.abs.bad2{border-color:var(--warn-deep); color:var(--warn-deep); background:#FDF4EA}
+.abs .t{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.flag{font-size:10px; color:var(--warn-deep); font-weight:700}
+.pool{font-size:9.5px; color:var(--muted)}
+
+/* ---------- 凡例・注記 ---------- */
+.legend{display:flex; flex-wrap:wrap; gap:14px; align-items:center; padding:9px 11px; background:var(--wash);
+  border:1px solid var(--rule2); border-radius:3px; font-size:11px; color:var(--ink2); margin:10px 0 0}
+.legend .grp{display:flex; align-items:center; gap:5px}
+.note{font-size:11.5px; color:var(--ink2); background:var(--wash); border-left:2px solid var(--rule);
+  padding:8px 11px; margin:12px 0; line-height:1.6}
+.note b{color:var(--ink)}
+.note.warnbox{border-left-color:var(--warn)}
+
+/* ---------- カード ---------- */
+.card{border:1px solid var(--rule); border-radius:3px; padding:12px 14px; margin:10px 0}
+.card h4{margin:0 0 2px; font-size:13.5px; font-weight:700}
+.card .meta{font-size:11px; color:var(--muted); margin-bottom:9px}
+.axes{display:flex; gap:16px; flex-wrap:wrap; margin:8px 0 10px}
+.axis{font-size:11px; color:var(--ink2)}
+.axis .bar{width:120px; height:5px; background:var(--rule2); border-radius:3px; position:relative; margin-top:3px}
+.axis .bar span{position:absolute; top:0; bottom:0; border-radius:3px}
+.plist{margin:0; padding-left:0; list-style:none; font-size:12px}
+.plist li{padding:2px 0; display:flex; gap:7px; align-items:baseline; flex-wrap:wrap}
+.plist .k{color:var(--ink2); min-width:152px}
+.diagrow{display:flex; flex-wrap:wrap; gap:18px; font-size:11.5px; color:var(--ink2); margin-top:9px;
+  padding-top:8px; border-top:1px dashed var(--rule)}
+.diagrow b{color:var(--ink); font-weight:600}
+.refline{font-size:10.5px; color:var(--muted); margin-top:7px}
+
+/* ---------- マトリクス ---------- */
+.mx{display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start}
+.qhelp{font-size:11.5px; color:var(--ink2); max-width:34ch}
+.qhelp dt{font-weight:700; margin-top:8px; color:var(--ink)}
+.qhelp dd{margin:0}
+#loading{font-size:13px; color:var(--muted); padding:24px 0}
+@media (max-width:760px){
+  .purpose{display:none}
+  thead th.l{min-width:132px}
+  .cell{min-width:98px}
+}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <h1>ログイン</h1>
+  <p>MEFは招待ユーザー専用です。招待メールで設定したメールアドレスとパスワードでログインしてください。</p>
+  <div style="margin-top:14px">
+    <input type="email" id="gateEmail" placeholder="メールアドレス" autocomplete="username">
+    <input type="password" id="gatePass" placeholder="パスワード" autocomplete="current-password">
+    <button class="go" id="gateLogin">ログイン</button>
+    <span id="gateErr"></span>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+<header>
+  <div class="bar">
+    <span class="mark">MEF<i>／</i>市町村評価共通フレームワーク</span>
+    <span class="fy">令和6年度決算</span>
+    <span class="purpose"><b>本システムは提案戦略の方向性検討を目的とします。</b>提案先の優先順位付け・候補選定を行うものではありません。</span>
+    <span class="who"><span id="whoami"></span><button id="logout">ログアウト</button></span>
+  </div>
+  <div class="sel">
+    <span class="lab">県</span><select id="pref"></select>
+    <span class="lab">検索</span><input type="search" id="q" placeholder="団体名">
+    <div class="chips" id="munis"></div>
+    <span class="cap" id="cap"></span>
+  </div>
+  <div class="picked" id="picked"></div>
+  <nav id="tabs"></nav>
+</header>
+<main id="main"><div id="loading">データを読み込んでいます…</div></main>
+</div>
+
+<script>
+/* ============================================================
+   状態
+   ============================================================ */
+let sb=null, session=null;
+let D=null, TS=null, KS=null;
+let PREF='静岡県', SEL=[], TAB='gen', Q='';
+const MAXSEL=4;
+const L2Z={'1':0.674,'0':0,'-1':-0.674,'-2':-1.5,'-3':-2.5};
+const TABS=[['gen','① 一般会計',1],['water','② 水道',1],['sewer','② 下水道',1],
+  ['diag','事業診断',1],['matrix','マトリクス',1],['kessan','決算',1],['ts','時系列',1],
+  ['notes','注記・出典',1],['qual','③④ 入力',0],['imp','データ取込',0]];
+
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fx=(v,d)=>(v===null||v===undefined||isNaN(v))?'—':Number(v).toFixed(d===undefined?2:d);
+const muni=k=>D.municipalities.find(m=>m.key===k);
+const entsOf=k=>D.entities.filter(e=>e.pref+'|'+e.muni===k);
+const prefs=()=>[...new Set(D.municipalities.map(m=>m.pref))];
+
+/* ============================================================
+   判定表示（二基準セル）
+   ============================================================ */
+function relChip(c){
+  if(!c) return '';
+  if(c.z===undefined||c.z===null){
+    const r=c.ex?esc(c.ex):(c.sb==='absolute'?'相対比較不可':'—');
+    return '<span class="rel off">相対 '+r+'</span>';
+  }
+  const z=c.z, k=z>=2?'g2':z>=0.674?'g1':z>-0.674?'n0':z>-2?'w1':'w2';
+  const t=z>=2?'良好 大':z>=0.674?'良好':z>-0.674?'標準':z>-2?'課題':'課題 大';
+  return '<span class="rel '+k+'">相対 '+t+' <span class="num">'+(z>=0?'+':'')+z.toFixed(2)+'</span></span>';
+}
+function absBadge(c){
+  if(!c||c.al===undefined||c.al===null) return '';
+  const k=c.al>0?'ok':c.al===0?'mid':c.al===-1?'bad1':'bad2';
+  const mk=c.al>0?'✓':c.al===0?'−':'!';
+  return '<span class="abs '+k+'" title="'+esc(c.an)+'">'+mk+'<span class="t">絶対 '+esc(c.an)+'</span></span>';
+}
+/* 相対では標準以上なのに絶対基準は未達＝最も誤読が起きる組み合わせ */
+function diverges(c){
+  if(!c) return false;
+  const relOK=(c.z===undefined||c.z===null)?true:c.z>-0.674;
+  return relOK && c.al!==undefined && c.al!==null && c.al<0;
+}
+function cell(c,dec){
+  if(!c||c.v===null||c.v===undefined)
+    return '<div class="cell"><span class="v na">'+esc((c&&c.ex)||'—')+'</span></div>';
+  return '<div class="cell'+(diverges(c)?' diverge':'')+'">'
+    +'<span class="v num">'+fx(c.v,dec)+'</span>'+relChip(c)+absBadge(c)
+    +(diverges(c)?'<span class="flag">▲ 相対では見えない課題</span>':'')+'</div>';
+}
+function legend(){
+  return '<div class="legend">'
+   +'<span class="grp"><b>相対</b>（5県・同一事業区分・同規模帯の中央値比）</span>'
+   +'<span class="grp"><span class="rel g1">良好</span><span class="rel n0">標準</span>'
+   +'<span class="rel w1">課題</span><span class="rel w2">課題 大</span></span>'
+   +'<span class="grp"><b>絶対</b>（制度基準・固定ライン）</span>'
+   +'<span class="grp"><span class="abs ok">✓<span class="t">達成</span></span>'
+   +'<span class="abs bad1">!<span class="t">未達</span></span></span>'
+   +'<span class="grp"><span class="flag">▲</span> 相対は標準以上だが絶対基準は未達</span></div>';
+}
+
+/* ============================================================
+   軸集計（判断1：指標単位でMEF2軸へ）
+   ============================================================ */
+function eff(c){
+  if(!c) return null;
+  if(c.z!==undefined&&c.z!==null) return c.z;
+  if(c.al!==undefined&&c.al!==null) return L2Z[String(c.al)];
+  return null;
+}
+function axesOf(key){
+  const m=muni(key), es=entsOf(key), acc={urgency:[],capacity:[]};
+  es.forEach(e=>{
+    const w=(typeof e.sv==='number'&&e.sv>0)?e.sv:1, loc={urgency:[],capacity:[]};
+    Object.values(e.ind).forEach(c=>{const v=eff(c); if(v!==null&&c.ax) loc[c.ax].push(v);});
+    Object.values(e.nk).forEach(c=>{const v=eff(c); if(v!==null&&c.ax) loc[c.ax].push(v);});
+    ['urgency','capacity'].forEach(a=>{
+      if(loc[a].length) acc[a].push([loc[a].reduce((x,y)=>x+y,0)/loc[a].length, w]);
+    });
+  });
+  const g={urgency:[],capacity:[]};
+  Object.values(m.gen).forEach(c=>{const v=eff(c); if(v!==null&&c.ax) g[c.ax].push(v);});
+  function mix(a){
+    const den=acc[a].reduce((s,x)=>s+x[1],0);
+    const biz=den?acc[a].reduce((s,x)=>s+x[0]*x[1],0)/den:null;
+    const gen=g[a].length?g[a].reduce((x,y)=>x+y,0)/g[a].length:null;
+    if(biz===null) return gen; if(gen===null) return biz;
+    return biz*0.6+gen*0.4;   /* 暫定重み。定義書8章の確定後に差替 */
+  }
+  const u=mix('urgency'), c=mix('capacity');
+  return {u:u===null?null:Math.max(0,Math.min(100,50-u*20)),
+          c:c===null?null:Math.max(0,Math.min(100,50+c*20))};
+}
+
+/* ============================================================
+   タブ描画
+   ============================================================ */
+function head(){ return '<tr><th class="l">指標</th>'+SEL.map(k=>'<th>'+esc(muni(k).muni)+'</th>').join('')+'</tr>'; }
+
+function renderGen(){
+  const rows=[['財政力指数','−',2],['経常収支比率','%',1],['実質公債費比率','%',1],['将来負担比率','%',1],
+    ['地方交付税依存度_pct','%',1],['地方税_1人当_千円','千円/人',1],
+    ['地方債現在高_1人当_千円','千円/人',1],['国調人口増減率_H27R2','%',1]];
+  let h='<h2>① 一般会計</h2><p class="sub">制度上の閾値がある指標（財政力指数・経常収支比率・実質公債費比率・将来負担比率）は<b>絶対基準</b>で、閾値がない指標は<b>相対</b>（類型別・ロバストz）で判定します。5県では実質公債費比率と将来負担比率の基準超過が0団体であり、これは各団体が健全性を維持している結果です。</p>';
+  h+=legend()+'<div class="scroll"><table><thead>'+head()+'</thead><tbody>';
+  rows.forEach(function(r){
+    const nm=r[0].replace(/_pct|_H27R2/g,'').replace(/_1人当_千円/,'(1人当)');
+    h+='<tr><td class="l ind">'+esc(nm)+'<span class="unit">'+r[1]+'</span></td>';
+    SEL.forEach(k=>{ h+='<td>'+cell(muni(k).gen[r[0]], r[2])+'</td>'; });
+    h+='</tr>';
+  });
+  h+='<tr><td class="l ind">人口密度<span class="unit">人/km²・構造参考</span></td>';
+  SEL.forEach(k=>{ const m=muni(k);
+    h+='<td><div class="cell"><span class="v num">'+fx(m.dens,0)+'</span>'
+      +'<span class="pool">面積 '+fx(m.area,1)+' km²・スコア非算入</span></div></td>'; });
+  h+='</tr></tbody></table></div>';
+  h+='<div class="note"><b>人口密度について：</b>'+esc(D.meta.structural_variable_caveat)+'</div>';
+  return h;
+}
+
+function bizTable(title, ents, inds, note){
+  let h='<h3>'+esc(title)+'</h3>';
+  if(note) h+='<div class="note">'+note+'</div>';
+  h+='<div class="scroll"><table><thead><tr><th class="l">指標</th>';
+  ents.forEach(e=>{ h+='<th>'+esc(e.muni)+'<span class="unit">'+esc(e.band||'—')+'帯・'
+    +(e.acc==='法非適用'?'法非適':'法適')+'</span></th>'; });
+  h+='</tr></thead><tbody>';
+  inds.forEach(ind=>{
+    if(!ents.some(e=>e.ind[ind])) return;
+    h+='<tr><td class="l ind"><span class="no">'+esc(ind.slice(0,1))+'</span>'+esc(ind.slice(1))+'</td>';
+    ents.forEach(e=>{ h+='<td>'+cell(e.ind[ind],2)+'</td>'; });
+    h+='</tr>';
+  });
+  [['_平均年齢','歳',1],['_職員1人当たり給水人口','人',0],['_基準外繰入依存度','%',1]].forEach(function(nk){
+    if(!ents.some(e=>e.nk[nk[0]])) return;
+    h+='<tr><td class="l ind">'+esc(nk[0].slice(1))+'<span class="unit">年鑑R6・'+nk[1]+'</span></td>';
+    ents.forEach(e=>{ h+='<td>'+cell(e.nk[nk[0]],nk[2])+'</td>'; });
+    h+='</tr>';
+  });
+  return h+'</tbody></table></div>';
+}
+function renderWater(){
+  const inds=['①経常収支比率','②累積欠損金比率','③流動比率','④企業債残高対給水収益比率','⑤料金回収率',
+    '⑥給水原価','⑦施設利用率','⑧有収率','①有形固定資産減価償却率','②管路経年化率','③管路更新率'];
+  let h='<h2>② 水道</h2><p class="sub">比較基準は5県・同一事業区分・同一規模帯（給水人口 A1–A7）の中央値。制度上の固定ラインがある指標は絶対基準を併記します。両者が食い違うセルには ▲ を付けています。</p>'+legend();
+  let any=false;
+  ['末端給水','簡易水道','用水供給'].forEach(g=>{
+    const es=SEL.flatMap(entsOf).filter(e=>e.group===g);
+    if(!es.length) return; any=true;
+    h+=bizTable(g+(g==='用水供給'?'（需要家が市町村のため別母集団）':''), es, inds,
+      g==='用水供給'?'用水供給は末端給水と収益構造・需要家構造が異なるため、母集団を分離しています。':'');
+  });
+  if(!any) h+='<p class="sub">選択団体に水道事業の収録がありません。</p>';
+  h+='<div class="note"><b>②人員の読み方：</b>'+esc(D.meta.staff_caveat)+'</div>';
+  return h;
+}
+function renderSewer(){
+  const inds=['①経常収支比率','②累積欠損金比率','③流動比率','④企業債残高対事業規模比率','⑤経費回収率',
+    '⑥汚水処理原価','⑦施設利用率','⑧水洗化率','①有形固定資産減価償却率','②管渠老朽化率','③管渠改善率'];
+  let h='<h2>② 下水道</h2><p class="sub">事業区分ごとに、同一区分・同一規模帯（処理区域内人口 S1–S4）の中央値と比較します。</p>'+legend();
+  let any=false;
+  ['公共下水道','特環公共下水道','集落排水','個別処理','流域下水道'].forEach(g=>{
+    const es=SEL.flatMap(entsOf).filter(e=>e.group===g);
+    if(!es.length) return; any=true;
+    h+=bizTable(g+(g==='流域下水道'?'（需要家が市町村のため別母集団）':''), es, inds);
+  });
+  if(!any) h+='<p class="sub">選択団体に下水道事業の収録がありません。</p>';
+  h+='<div class="note warnbox"><b>④企業債残高の除外：</b>'+esc(D.meta.excluded)
+    +'　5県736事業のうち118件が該当します。除外された事業は当該セルに理由を表示し、指標充足率（事業診断タブ）が低下します。</div>';
+  h+='<div class="note"><b>基準外繰入依存度：</b>'+esc(D.meta.kurikire_caveat)+'</div>';
+  return h;
+}
+
+function renderDiag(){
+  let h='<h2>事業診断</h2><p class="sub">事業ごとの課題構造です。A/B/C軸はこのタブ独自の分解で、マトリクスの2軸とは別体系です。合成値と群内順位は軸間バランスを見るための参照値であり、序列として用いません。</p>';
+  const es=SEL.flatMap(entsOf);
+  if(!es.length) return h+'<p class="sub">選択団体に事業の収録がありません。</p>';
+  es.forEach(e=>{
+    const prof=[], abs=[];
+    Object.keys(e.ind).forEach(k=>{ const c=e.ind[k];
+      if(c.z!==undefined&&c.z!==null&&c.z<=-0.674) prof.push([k,c]);
+      if(c.al!==undefined&&c.al!==null&&c.al<0) abs.push([k,c]); });
+    Object.keys(e.nk).forEach(k=>{ const c=e.nk[k];
+      if(c.z!==undefined&&c.z!==null&&c.z<=-0.674) prof.push([k.slice(1),c]); });
+    prof.sort((a,b)=>a[1].z-b[1].z);
+    const bar=v=>{ const p=Math.max(-3,Math.min(3,v||0)), w=Math.abs(p)/3*50;
+      return '<div class="bar"><span style="'+(p<0?'right:50%':'left:50%')+';width:'+w+'%;background:'
+        +(p<0?'var(--warn)':'var(--good)')+'"></span></div>'; };
+    h+='<div class="card"><h4>'+esc(e.muni)+' '+esc(e.jigyou)+'</h4>'
+      +'<div class="meta">'+esc(e.group)+'／'+esc(e.band||'—')+'帯／'+esc(e.acc)
+      +'　'+esc(e.svt||'')+' '+(e.sv?Number(e.sv).toLocaleString():'—')+'人'
+      +'　指標充足 '+(e.cov===null?'—':(e.cov*100).toFixed(0)+'%')+'</div>'
+      +'<div class="axes">'
+      +'<div class="axis">A 経営持続性 <span class="num">'+fx(e.abc['A_経営持続性'],2)+'</span>'+bar(e.abc['A_経営持続性'])+'</div>'
+      +'<div class="axis">B 老朽化・更新 <span class="num">'+fx(e.abc['B_老朽化更新'],2)+'</span>'+bar(e.abc['B_老朽化更新'])+'</div>'
+      +'<div class="axis">C 運転効率 <span class="num">'+fx(e.abc['C_運転効率'],2)+'</span>'+bar(e.abc['C_運転効率'])+'</div>'
+      +'</div><ul class="plist">'
+      +(prof.length?prof.slice(0,5).map(p=>'<li><span class="k">'+esc(p[0])+'</span><span class="num">'
+        +fx(p[1].v,2)+'</span>'+relChip(p[1])+'</li>').join(''):'<li><span class="k">相対課題</span>なし</li>')
+      +abs.slice(0,4).map(p=>'<li><span class="k">'+esc(p[0])+'</span><span class="num">'+fx(p[1].v,2)+'</span>'
+        +absBadge(p[1])+'</li>').join('')
+      +'</ul><div class="diagrow">'
+      +Object.keys(e.diag).map(k=>'<span>'+esc(k.replace(/_pct/,''))+' <b class="num">'
+        +(e.diag[k]===null?'実績なし':e.diag[k])+'</b></span>').join('')
+      +'</div><div class="refline">参照値（序列ではありません）：合成 '+fx(e.ref.comp,2)
+      +'／群内 '+(e.ref.rank||'—')+' of '+(e.ref.n||'—')+'</div></div>';
+  });
+  return h;
+}
+
+function renderMatrix(){
+  const W=580,H=430,P=50;
+  const pts=SEL.map(k=>({m:muni(k),a:axesOf(k)})).filter(p=>p.a.u!==null&&p.a.c!==null);
+  const X=v=>P+(v/100)*(W-P*2), Y=v=>H-P-(v/100)*(H-P*2);
+  const q=(x,y,t,s)=>'<text x="'+x+'" y="'+y+'" font-size="10.5" fill="#888">'+t+'</text>'
+    +'<text x="'+x+'" y="'+(y+13)+'" font-size="10" fill="#B0B0B0">'+s+'</text>';
+  let dots='';
+  pts.forEach(p=>{ const x=X(p.a.u), y=Y(p.a.c);
+    dots+='<circle cx="'+x+'" cy="'+y+'" r="6" fill="#333" opacity=".82"/>'
+      +'<text x="'+(x+10)+'" y="'+(y+4)+'" font-size="12" fill="#333">'+esc(p.m.muni)+'</text>'; });
+  let h='<h2>マトリクス</h2><p class="sub">横軸＝切迫度（②収支・原価・老朽化・運転効率・人員＋①人口増減率）、縦軸＝受入能力（②企業債残高・繰入依存度＋①財政指標）。事業スコアは給水人口・処理区域内人口で規模加重し、団体単位に集約しています。</p>'
+   +'<div class="mx"><svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px">'
+   +'<line x1="'+P+'" y1="'+(H-P)+'" x2="'+(W-P)+'" y2="'+(H-P)+'" stroke="#D9D9D9"/>'
+   +'<line x1="'+P+'" y1="'+P+'" x2="'+P+'" y2="'+(H-P)+'" stroke="#D9D9D9"/>'
+   +'<line x1="'+X(50)+'" y1="'+P+'" x2="'+X(50)+'" y2="'+(H-P)+'" stroke="#EDEDED" stroke-dasharray="3 3"/>'
+   +'<line x1="'+P+'" y1="'+Y(50)+'" x2="'+(W-P)+'" y2="'+Y(50)+'" stroke="#EDEDED" stroke-dasharray="3 3"/>'
+   +q(X(52),P+14,'切迫 高 × 受入 高','包括委託・コンセッション提案型')
+   +q(P+6,P+14,'切迫 低 × 受入 高','制度整備伴走型')
+   +q(X(52),H-P-22,'切迫 高 × 受入 低','関係構築・広域文脈型')
+   +q(P+6,H-P-22,'切迫 低 × 受入 低','広域連携の初期需要')
+   +'<text x="'+(W/2)+'" y="'+(H-12)+'" font-size="11" text-anchor="middle" fill="#5F5F5F">切迫度 →</text>'
+   +'<text x="14" y="'+(H/2)+'" font-size="11" text-anchor="middle" fill="#5F5F5F" transform="rotate(-90 14 '+(H/2)+')">受入能力 →</text>'
+   +dots+'</svg>'
+   +'<dl class="qhelp"><dt>象限は提案の「型」を示します</dt><dd>優先順位ではありません。切迫度が低い団体に提案余地がないという意味ではなく、提案の入り方が変わることを示します。</dd>'
+   +'<dt>集約のしかた</dt><dd>事業スコアを規模加重で平均し、②:①=6:4で合成しています（暫定重み。定義書8章の確定後に差し替えます）。</dd>'
+   +'<dt>③④は未反映</dt><dd>制度・政治環境と当社シナジーは第2段で接続します。</dd></dl></div>';
+  return h;
+}
+
+/* ---------- 決算（年鑑明細・遅延読込） ---------- */
+async function renderKessan(){
+  if(!KS){ try{ const r=await fetch('data/mef_app_kessan_r6.json'); KS=r.ok?await r.json():null; }catch(e){ KS=null; } }
+  let h='<h2>決算</h2><p class="sub">地方公営企業年鑑（令和6年度決算）の明細です。分析表由来の指標とは算定・母集団が異なる場合があるため、同一スコア内で出典を混在させません（同名でも別指標）。</p>';
+  if(!KS) return h+'<div class="note warnbox"><b>決算明細を読み込めませんでした。</b>data/mef_app_kessan_r6.json の配置をご確認ください。</div>';
+  SEL.forEach(k=>{
+    const m=muni(k);
+    const ws=KS.water.filter(e=>e.key===k), ss=KS.sewer.filter(e=>e.key===k);
+    h+='<h3>'+esc(m.muni)+'</h3>';
+    if(ws.length){
+      h+='<h4 class="sec">水道（様式23–25）</h4><div class="scroll"><table><thead><tr><th class="l">項目</th>'
+        +ws.map(e=>'<th>'+esc(e.jigyo)+'</th>').join('')+'</tr></thead><tbody>';
+      const rows=[['行政区域内人口',e=>e.pop_admin,0],['現在給水人口',e=>e.pop_current,0],
+        ['職員数計',e=>e.staff.total,0],['損益勘定 / 資本勘定',e=>null,0],
+        ['平均年齢',e=>e.staff.avg_age,1],['平均勤続年数',e=>e.staff.avg_tenure,1],
+        ['供給単価',e=>e.mgmt.unit_price,2],['給水原価',e=>e.mgmt.unit_cost,2],
+        ['総収益',e=>e.fin.rev_total,0],['給水収益',e=>e.fin.rev_water,0],
+        ['企業債残高',e=>e.fin.bond_balance,0],['償却資産',e=>e.fin.dep_asset,0],
+        ['減価償却累計額',e=>e.fin.dep_accum,0],
+        ['他会計補助金（収益的）',e=>e.fin.sub_op,0],['他会計繰入金（特別利益）',e=>e.fin.sub_sp,0],
+        ['他会計補助金（資本的）',e=>e.fin.cap_sub,0]];
+      rows.forEach(r=>{
+        h+='<tr><td class="l ind">'+esc(r[0])+'</td>';
+        ws.forEach(e=>{
+          if(r[0]==='損益勘定 / 資本勘定'){ h+='<td class="num">'+fx(e.staff.profit,0)+' / '+fx(e.staff.capital,0)+'</td>'; return; }
+          const v=r[1](e); h+='<td class="num">'+(v===null||v===undefined?'—':Number(v).toLocaleString(undefined,{maximumFractionDigits:r[2]}))+'</td>';
+        });
+        h+='</tr>';
+      });
+      h+='</tbody></table></div><p class="pool">金額単位は千円。職員数は会計年度任用職員を含みます（元票注2）。</p>';
+    }
+    if(ss.length){
+      h+='<h4 class="sec">下水道（様式1–5・法適）</h4><div class="scroll"><table><thead><tr><th class="l">項目</th>'
+        +ss.map(e=>'<th>'+esc(e.kbn)+'</th>').join('')+'</tr></thead><tbody>';
+      const rows=[['処理区域内人口',e=>e.pop_treated,0],['年間有収水量',e=>e.yushu_vol,0],
+        ['年間汚水処理水量',e=>e.osui_vol,0],['有収率（処理水量ベース）',e=>e.yushu_ritsu,2],
+        ['使用料単価',e=>e.tanka,2],['汚水処理原価',e=>e.genka,2],
+        ['総収益',e=>e.rev_total,0],['下水道使用料',e=>e.fee,0],['雨水処理負担金',e=>e.usui_futan,0],
+        ['企業債残高',e=>e.bond_balance,0],['償却資産',e=>e.dep_asset,0],['減価償却累計額',e=>e.dep_accum,0],
+        ['他会計補助金（収益的）',e=>e.sub_op,0],['他会計繰入金（特別利益）',e=>e.sub_sp,0],
+        ['他会計補助金（資本的）',e=>e.cap_sub,0],['うち雨水処理費相当額',e=>e.cap_sub_usui,0]];
+      rows.forEach(r=>{
+        h+='<tr><td class="l ind">'+esc(r[0])+'</td>';
+        ss.forEach(e=>{ const v=r[1](e);
+          h+='<td class="num">'+(v===null||v===undefined?'—':Number(v).toLocaleString(undefined,{maximumFractionDigits:r[2]}))+'</td>'; });
+        h+='</tr>';
+      });
+      h+='</tbody></table></div>';
+      const hi=(KS.sewer_hihoteki||[]).filter(x=>x.key===k);
+      if(hi.length) h+='<div class="note">法非適用事業（参考・スコア対象外）：'+hi.map(x=>esc(x.kbn)).join('、')+'</div>';
+    }
+    if(!ws.length&&!ss.length) h+='<p class="sub">年鑑に収録がありません（企業団給水区域・県営区域等）。</p>';
+  });
+  return h;
+}
+
+/* ---------- 時系列（遅延読込） ---------- */
+async function renderTs(){
+  if(!TS){ try{ const r=await fetch('data/mef_app_ts_r6.json'); TS=r.ok?await r.json():null; }catch(e){ TS=null; } }
+  let h='<h2>時系列</h2><p class="sub">令和2〜6年度。R1は原資の掲載期間外のため収録していません。</p>';
+  if(!TS) return h+'<div class="note warnbox"><b>時系列データを読み込めませんでした。</b>data/mef_app_ts_r6.json の配置をご確認ください。</div>';
+  h+='<div class="note">'+esc(TS.meta.note)+'</div>';
+  SEL.forEach(k=>{
+    const m=muni(k);
+    const rows=TS.rows.filter(r=>r.pref+'|'+r.muni===k);
+    if(!rows.length){ h+='<h3>'+esc(m.muni)+'</h3><p class="sub">収録なし。</p>'; return; }
+    h+='<h3>'+esc(m.muni)+'</h3>';
+    [...new Set(rows.map(r=>r.jigyou))].forEach(j=>{
+      const rs=rows.filter(r=>r.jigyou===j);
+      h+='<h4 class="sec">'+esc(j)+'</h4><div class="scroll"><table><thead><tr><th class="l">指標</th>'
+        +'<th>R2</th><th>R3</th><th>R4</th><th>R5</th><th>R6</th><th>R4–R6平均</th></tr></thead><tbody>';
+      rs.forEach(r=>{
+        h+='<tr><td class="l ind">'+esc(r.ind)+'<span class="unit">'+esc(r.u||'')+'</span></td>'
+          +['R2','R3','R4','R5','R6'].map(y=>'<td class="num">'+fx(r[y],2)+'</td>').join('')
+          +'<td class="num">'+fx(r.a3,2)+'</td></tr>';
+      });
+      h+='</tbody></table></div>';
+    });
+  });
+  return h;
+}
+
+/* ---------- 注記・出典 ---------- */
+function renderNotes(){
+  const M=D.meta;
+  const item=(t,b)=>'<h3>'+esc(t)+'</h3><p class="sub">'+esc(b)+'</p>';
+  let h='<h2>注記・出典</h2><p class="sub">評価ロジックの前提・限界・出典です。対外資料を作成する際は、本節の限界を確認してください。</p>';
+  h+=item('目的', M.purpose);
+  h+='<div class="note warnbox"><b>本システムで行わないこと：</b>'+esc(M.not_purpose)+'</div>';
+  h+=item('基準年度', M.base_fiscal_year);
+  h+=item('採点方式', M.scoring);
+  h+=item('軸の構成', M.mef_axis);
+  h+=item('④企業債残高の除外', M.excluded);
+  h+=item('②人員の読み方', M.staff_caveat);
+  h+=item('基準外繰入依存度', M.kurikire_caveat);
+  h+=item('構造変数（人口密度）', M.structural_variable);
+  h+='<div class="note">'+esc(M.structural_variable_caveat)+'</div>';
+  h+='<h3>絶対基準の根拠</h3><div class="scroll"><table><thead><tr><th class="l">指標</th><th class="l">基準</th></tr></thead><tbody>';
+  Object.keys(M.absolute_basis).forEach(k=>{
+    h+='<tr><td class="l ind">'+esc(k)+'</td><td class="l" style="font-size:12px">'+esc(M.absolute_basis[k])+'</td></tr>'; });
+  h+='</tbody></table></div>';
+  h+='<h3>出典</h3><ul class="plist">'+M.sources.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ul>';
+  h+='<h3>データ規模</h3><p class="sub">'+D.municipalities.length+'団体／'+D.entities.length+'事業（5県）。'
+    +'プールは事業'+D.pools.biz.length+'・一般会計'+D.pools.gen.length+'・年鑑'+D.pools.nenkan.length+'。</p>';
+  return h;
+}
+
+/* ============================================================
+   骨格
+   ============================================================ */
+function drawSel(){
+  document.getElementById('pref').innerHTML=prefs().map(p=>
+    '<option'+(p===PREF?' selected':'')+'>'+esc(p)+'</option>').join('');
+  const list=D.municipalities.filter(m=>m.pref===PREF && (!Q||m.muni.indexOf(Q)>=0));
+  document.getElementById('munis').innerHTML=list.map(m=>
+    '<button class="mchip" data-k="'+esc(m.key)+'" aria-pressed="'+(SEL.indexOf(m.key)>=0)+'">'
+    +esc(m.muni)+'</button>').join('') || '<span class="cap">該当なし</span>';
+  document.getElementById('cap').textContent=list.length+'団体中 '+SEL.length+'/'+MAXSEL+'選択';
+  document.getElementById('picked').innerHTML=SEL.map(k=>{const m=muni(k);
+    return '<span class="p"><b>'+esc(m.muni)+'</b>'+esc(m.pref.replace('県',''))
+      +'<span data-del="'+esc(k)+'">×</span></span>';}).join('');
+}
+function drawTabs(){
+  document.getElementById('tabs').innerHTML=TABS.map(t=>
+    '<button data-t="'+t[0]+'" aria-selected="'+(TAB===t[0])+'"'+(t[2]?'':' disabled')+'>'+t[1]+'</button>').join('');
+}
+async function draw(){
+  drawSel(); drawTabs();
+  const el=document.getElementById('main');
+  if(!SEL.length){ el.innerHTML='<p class="sub">県を選び、団体を選択してください。同時表示は'+MAXSEL+'団体までです。</p>'; return; }
+  if(TAB==='gen') el.innerHTML=renderGen();
+  else if(TAB==='water') el.innerHTML=renderWater();
+  else if(TAB==='sewer') el.innerHTML=renderSewer();
+  else if(TAB==='diag') el.innerHTML=renderDiag();
+  else if(TAB==='matrix') el.innerHTML=renderMatrix();
+  else if(TAB==='notes') el.innerHTML=renderNotes();
+  else if(TAB==='kessan'){ el.innerHTML='<p class="sub">決算明細を読み込んでいます…</p>'; el.innerHTML=await renderKessan(); }
+  else if(TAB==='ts'){ el.innerHTML='<p class="sub">時系列を読み込んでいます…</p>'; el.innerHTML=await renderTs(); }
+}
+document.addEventListener('change',e=>{ if(e.target.id==='pref'){ PREF=e.target.value; drawSel(); }});
+document.addEventListener('input',e=>{ if(e.target.id==='q'){ Q=e.target.value.trim(); drawSel(); }});
+document.addEventListener('click',e=>{
+  const del=e.target.getAttribute&&e.target.getAttribute('data-del');
+  if(del){ SEL=SEL.filter(x=>x!==del); draw(); return; }
+  const c=e.target.closest('.mchip');
+  if(c){ const k=c.dataset.k;
+    if(SEL.indexOf(k)>=0) SEL=SEL.filter(x=>x!==k);
+    else { if(SEL.length>=MAXSEL) SEL.shift(); SEL.push(k); }
+    draw(); return; }
+  const t=e.target.closest('nav button');
+  if(t&&!t.disabled){ TAB=t.dataset.t; draw(); }
+});
+
+/* ============================================================
+   認証・起動
+   ============================================================ */
+function gateErr(m){ document.getElementById('gateErr').textContent=m; }
+function route(){
+  const inn=!!session;
+  document.getElementById('gate').style.display=inn?'none':'block';
+  document.getElementById('app').style.display=inn?'block':'none';
+  if(inn){
+    document.getElementById('whoami').textContent=(session.user&&session.user.email)||'';
+    if(!D) load();
+  }
+}
+async function load(){
+  try{
+    const r=await fetch('data/mef_app_r6.json');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    D=await r.json();
+    if(!SEL.length){
+      ['静岡県|湖西市','岐阜県|中津川市','三重県|桑名市'].forEach(k=>{ if(muni(k)) SEL.push(k); });
+    }
+    draw();
+  }catch(err){
+    document.getElementById('main').innerHTML=
+      '<div class="note warnbox"><b>データの読込に失敗しました：</b>'+esc(err.message)
+      +'<br>リポジトリの data/mef_app_r6.json が配置されているかご確認ください。</div>';
+  }
+}
+function initAuth(){
+  if(typeof supabase==='undefined'){ gateErr('supabase-js（CDN）の読込に失敗しました。通信環境を確認して再読込してください。'); return; }
+  if(typeof MEF_CONFIG==='undefined'||!MEF_CONFIG.SUPABASE_URL||MEF_CONFIG.SUPABASE_URL.indexOf('xxxx')>=0){
+    gateErr('接続設定（config.js）が未設定です。'); return; }
+  sb=supabase.createClient(MEF_CONFIG.SUPABASE_URL,MEF_CONFIG.SUPABASE_ANON_KEY);
+  sb.auth.getSession().then(r=>{ session=r.data.session; route(); });
+  sb.auth.onAuthStateChange((_e,s)=>{ session=s; route(); });
+  document.getElementById('gateLogin').addEventListener('click',submit);
+  document.getElementById('gatePass').addEventListener('keydown',e=>{ if(e.key==='Enter') submit(); });
+  document.getElementById('logout').addEventListener('click',()=>sb.auth.signOut());
+}
+async function submit(){
+  gateErr('ログイン中…');
+  const r=await sb.auth.signInWithPassword({
+    email:document.getElementById('gateEmail').value.trim(),
+    password:document.getElementById('gatePass').value});
+  gateErr(r.error?('ログイン失敗: '+r.error.message):'');
+}
+initAuth();
+/* テスト用フック */
+window.__mef={setD:d=>{D=d;},setSel:s=>{SEL=s;},setTab:t=>{TAB=t;},draw:()=>draw(),
+  axesOf:k=>axesOf(k),diverges:c=>diverges(c),bypass:()=>{session={user:{email:'test'}};route();}};
+</script>
+</body>
+</html>
