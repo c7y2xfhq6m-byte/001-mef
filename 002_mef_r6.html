@@ -60,9 +60,7 @@ header{position:sticky; top:0; z-index:40; background:var(--paper); border-botto
 .mark i{font-style:normal; color:var(--brand)}
 .fy{font-size:11px; letter-spacing:.06em; color:var(--ink2); border:1px solid var(--rule);
   border-radius:2px; padding:1px 7px; white-space:nowrap}
-.purpose{margin-left:auto; font-size:11.5px; color:var(--ink2); text-align:right; max-width:46ch; line-height:1.45}
-.purpose b{color:var(--ink); font-weight:600}
-.who{font-size:11px; color:var(--muted)}
+.who{font-size:11px; color:var(--muted); margin-left:auto}
 .who button{background:none; border:1px solid var(--rule); border-radius:2px; font-size:11px;
   padding:1px 8px; margin-left:6px; cursor:pointer; color:var(--ink2)}
 
@@ -97,7 +95,7 @@ nav button[disabled]{color:#C4C4C4; cursor:not-allowed}
 nav button[disabled]::after{content:"第2段"; font-size:9px; margin-left:5px; color:#C4C4C4;
   border:1px solid #E4E4E4; border-radius:2px; padding:0 3px}
 
-main{padding:16px 16px 72px; max-width:1500px}
+main{padding:16px 16px 92px; max-width:1500px}
 h2{font-size:16px; font-weight:700; margin:0 0 4px}
 .sub{font-size:12px; color:var(--ink2); margin:0 0 13px; max-width:80ch}
 h3{font-size:13px; font-weight:700; margin:22px 0 6px; padding-bottom:3px; border-bottom:1px solid var(--rule)}
@@ -168,6 +166,16 @@ tbody tr:hover{background:var(--wash)}
 .qhelp dd{margin:0}
 #loading{font-size:13px; color:var(--muted); padding:24px 0}
 
+/* ---------- 下部固定バー（目的の但し書き） ---------- */
+#foot{position:fixed; left:0; right:0; bottom:0; z-index:50; background:var(--paper);
+  border-top:1px solid var(--rule); padding:7px 16px; display:flex; align-items:center; gap:9px;
+  font-size:11.5px; color:var(--ink2); line-height:1.45;
+  box-shadow:0 -1px 6px rgba(0,0,0,.045)}
+#foot .dot{flex:0 0 auto; width:6px; height:6px; border-radius:50%; background:var(--brand)}
+#foot .ft b{color:var(--ink); font-weight:600}
+#foot .ft2{margin-left:6px}
+@media (max-width:760px){ #foot .ft2{display:none} }
+
 /* ---------- ③④入力 ---------- */
 .qitem{border:1px solid var(--rule); border-radius:3px; padding:11px 13px; margin:11px 0}
 .qitem h4{margin:0 0 3px; font-size:13px; font-weight:700}
@@ -215,7 +223,6 @@ details.hist tr.del{color:#B8B8B8; text-decoration:line-through}
 .sens li{font-size:12px; padding:2px 0}
 .sens .chg{color:var(--warn-deep); font-weight:600}
 @media (max-width:760px){
-  .purpose{display:none}
   thead th.l{min-width:132px}
   .cell{min-width:98px}
 }
@@ -239,7 +246,6 @@ details.hist tr.del{color:#B8B8B8; text-decoration:line-through}
   <div class="bar">
     <span class="mark">MEF<i>／</i>市町村評価共通フレームワーク</span>
     <span class="fy">令和6年度決算</span>
-    <span class="purpose"><b>本システムは提案戦略の方向性検討を目的とします。</b>提案先の優先順位付け・候補選定を行うものではありません。</span>
     <span class="who"><span id="whoami"></span><button id="logout">ログアウト</button></span>
   </div>
   <div class="sel">
@@ -252,6 +258,10 @@ details.hist tr.del{color:#B8B8B8; text-decoration:line-through}
   <nav id="tabs"></nav>
 </header>
 <main id="main"><div id="loading">データを読み込んでいます…</div></main>
+<footer id="foot">
+  <span class="dot"></span>
+  <span class="ft"><b>本システムは提案戦略の方向性検討を目的とします。</b><span class="ft2">提案先の優先順位付け・候補選定を行うものではありません。合成スコアと群内順位は参照値であり、対外資料には用いません。</span></span>
+</footer>
 </div>
 
 <script>
