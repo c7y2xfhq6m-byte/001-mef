@@ -167,6 +167,35 @@ tbody tr:hover{background:var(--wash)}
 .qhelp dt{font-weight:700; margin-top:8px; color:var(--ink)}
 .qhelp dd{margin:0}
 #loading{font-size:13px; color:var(--muted); padding:24px 0}
+
+/* ---------- ③④入力 ---------- */
+.qitem{border:1px solid var(--rule); border-radius:3px; padding:11px 13px; margin:11px 0}
+.qitem h4{margin:0 0 3px; font-size:13px; font-weight:700}
+.qsrc{font-size:11px; color:var(--muted); margin-bottom:7px; line-height:1.55}
+.abadge{font-size:9.5px; border:1px solid var(--rule); border-radius:2px; padding:0 5px;
+  margin-left:6px; color:var(--ink2); font-weight:400; white-space:nowrap}
+.abadge.w2{border-color:var(--warn); color:var(--warn-deep)}
+.eff{font-size:12px; margin:5px 0 7px; padding:4px 8px; background:var(--wash); border-radius:2px}
+.eff.none{color:var(--muted)}
+.anchor{display:block; font-size:12.5px; padding:3px 6px; border-radius:2px; cursor:pointer; line-height:1.5}
+.anchor:hover{background:var(--wash)}
+.anchor.cur{background:#F2F7F5; font-weight:600}
+.anchor input{margin-right:6px}
+.qform{display:flex; gap:7px; flex-wrap:wrap; margin-top:8px; align-items:center}
+.qform input{flex:1 1 240px; padding:5px 8px; border:1px solid var(--rule); border-radius:2px; font-size:12.5px}
+.qform button{padding:5px 14px; background:var(--brand); color:#fff; border:0; border-radius:2px;
+  font-size:12.5px; font-weight:700; cursor:pointer}
+.msg{font-size:11.5px}
+.msg.ok{color:var(--good-deep)} .msg.err{color:var(--warn-deep)}
+details.hist{margin-top:8px}
+details.hist summary{font-size:11.5px; color:var(--ink2); cursor:pointer}
+details.hist table{font-size:11.5px}
+details.hist tr.del{color:#B8B8B8; text-decoration:line-through}
+.linklike{background:none; border:0; color:var(--warn-deep); font-size:11px; cursor:pointer; text-decoration:underline}
+.covbar{display:inline-block; width:70px; height:5px; background:var(--rule2); border-radius:3px;
+  vertical-align:middle; margin:0 5px; position:relative}
+.covbar span{position:absolute; left:0; top:0; bottom:0; background:var(--ink2); border-radius:3px}
+.prov{font-size:10.5px; color:var(--warn-deep); border:1px solid var(--warn); border-radius:2px; padding:0 5px}
 @media (max-width:760px){
   .purpose{display:none}
   thead th.l{min-width:132px}
@@ -218,7 +247,78 @@ const MAXSEL=4;
 const L2Z={'1':0.674,'0':0,'-1':-0.674,'-2':-1.5,'-3':-2.5};
 const TABS=[['gen','① 一般会計',1],['water','② 水道',1],['sewer','② 下水道',1],
   ['diag','事業診断',1],['matrix','マトリクス',1],['kessan','決算',1],['ts','時系列',1],
-  ['notes','注記・出典',1],['qual','③④ 入力',0],['imp','データ取込',0]];
+  ['qual','③④ 入力',1],['notes','注記・出典',1],['imp','データ取込',0]];
+
+/* ---------- ③④ 定性入力の定義（定義書6・7章。001_mef.html から移植） ---------- */
+const QUAL_DEF=[
+ {code:'3-1',max:4,axis:'cap',w2:true,title:'3-1 管路台帳の電子化・データベース化（データ基盤成熟度）',
+  src:'確認ソース: 経営戦略・ストックマネジメント計画・予算資料・ヒアリング',
+  anchors:['0:L0（紙台帳のみ）','1:L1（図面の電子化・表計算台帳。位置と属性の一体照会不可）',
+   '2:L2（管路台帳の電子化・データベース化＝国費要件の充足ライン）',
+   '3:L3（点検・診断・修繕履歴と統合。劣化予測と更新優先順位付けが回る）',
+   '4:L4（運転監視・エネルギー・料金・スマートメーター使用量まで統合）']},
+ {code:'3-2',max:3,axis:'cap',w2:true,title:'3-2 包括委託・コンセッション導入の検討段階',
+  src:'確認ソース: 議会会議録・審議会資料・予算資料',
+  anchors:['0:未検討','1:庁内研究・情報収集段階','2:導入可能性調査・審議会付議','3:導入方針決定・公表済']},
+ {code:'3-3',max:3,axis:'cap',title:'3-3 経営戦略・アセットマネジメント計画',
+  src:'確認ソース: 経営戦略・ストックマネジメント計画',
+  anchors:['0:未策定','1:策定済・未改定（5年超）','2:策定済・改定サイクル運用中','3:直近改定済かつ投資計画と料金戦略が接続']},
+ {code:'3-4',max:3,axis:'urg',title:'3-4 経営審議会の活動状況',
+  src:'確認ソース: 審議会議事録・答申　※切迫度の定性補完',
+  anchors:['0:設置なし','1:設置済・休眠','2:審議中','3:答申直後（1年以内）で改革の窓が開いている']},
+ {code:'3-5',max:3,axis:'urg',title:'3-5 料金改定の直近時期と経緯',
+  src:'確認ソース: 料金条例改正履歴・審議会資料・広報　※切迫度の定性補完',
+  anchors:['0:直近改定済（3年以内）で当面据置見込み','1:改定後3〜10年','2:10年超未改定または改定審議中','3:原価割れ公表かつ改定審議中']},
+ {code:'3-6',max:3,axis:'cap',title:'3-6 首長任期・議会構成',
+  src:'確認ソース: 選挙管理委員会・施政方針・議会会議録　※機微情報。根拠は事実（任期・公約・会議録）ベースで記録',
+  anchors:['0:改選1年以内で大型案件回避局面','1:会派状況不透明','2:任期中盤で政策推進局面','3:首長が公民連携・行革を公約に明示']},
+ {code:'3-7',max:3,axis:'cap',title:'3-7 民間委託実績',
+  src:'確認ソース: 契約実績・入札公告',
+  anchors:['0:直営中心・個別委託のみ','1:運転管理等の個別委託が定着','2:性能発注または複数業務の包括委託実績あり','3:包括委託を仕様発注から性能発注へ移行済']},
+ {code:'3-8',max:3,axis:'cap',title:'3-8 広域連携の枠組み',
+  src:'確認ソース: 都道府県の水道広域化推進プラン・広域化共同化計画',
+  anchors:['0:参加なし','1:協議会等に参加','2:県主導の広域化計画で具体的位置づけあり','3:共同発注・共同処理の実績あり']},
+ {code:'4-1',max:3,axis:'syn',title:'4-1 既存の市町村との接点・協定',
+  src:'評価の視点: サウンディングの初動コストと信頼形成の先行度',
+  anchors:['0:接点なし','1:営業接点あり','2:包括連携・防災協定等の締結済','3:共同事業・実証の実績あり']},
+ {code:'4-2',max:3,axis:'syn',title:'4-2 広域プラットフォームのハブ性',
+  src:'評価の視点: 複数市町プラットフォームへの接続性。状態監視保全・人材プールは圏域プールで初めて経済性が成立',
+  anchors:['0:孤立立地','1:近隣に対象候補が少数','2:近隣圏に複数の候補市町が連坦','3:圏域運用の核になり得る']},
+ {code:'4-3',max:3,axis:'syn',title:'4-3 中立性の効きやすさ',
+  src:'評価の視点: 非機器メーカーとしての構造的中立性が調達上の差別化として機能する度合い',
+  anchors:['0:性能発注の見込みなし','1:仕様発注中心','2:性能発注への移行意向あり','3:性能発注方針が明示され、機器メーカー系との利益相反回避が論点化済']}
+];
+let QE={};          /* {muni_key:{item_code:level}} 有効値 */
+let qualRows=[], qualCity=null;
+
+/* ---------- 重み（定義書8章。②70／①10／③20 の配分は維持し、②の内訳を細分） ---------- */
+const DEFAULT_W={
+  urgency:{
+    w2_finance:{label:'②財務健全性（経常収支・累積欠損金・流動比率・回収率・原価）',weight:30},
+    w2_aging:{label:'②老朽化・更新（減価償却率・経年化/老朽化率・更新/改善率）',weight:25},
+    w2_ops:{label:'②運転効率（施設利用率・有収率/水洗化率）',weight:10},
+    w2_staff:{label:'②人員（平均年齢・職員1人当たり給水人口）',weight:5},
+    w1_pop:{label:'①人口動態（国調人口増減率）',weight:10},
+    w3_signal:{label:'③定性補完（3-4・3-5）',weight:20}},
+  capacity:{
+    w1_fiscal:{label:'①財政指標',weight:35},
+    w3_inst:{label:'③制度準備（3-1・3-2・3-3・3-7・3-8／3-1・3-2は内部重み2倍）',weight:40},
+    w3_politics:{label:'③政治環境（3-6）',weight:15},
+    w2_capex:{label:'②投資余力（企業債残高・基準外繰入依存度）',weight:10}}
+};
+const QUAD={hh:['再建型','包括委託・コンセッションの本格提案により、財務・更新・体制を一体で立て直す。'],
+  lh:['予防保全・性能発注先行型','切迫前の段階から性能発注・予防保全の枠組みづくりに入る。'],
+  hl:['制度整備伴走型','制度・調達の準備が整っていないため、計画策定・台帳整備の伴走から入る。'],
+  ll:['関係構築・広域文脈型','単独案件としては成立しにくい。広域連携の文脈で関係を作る。']};
+/* ②指標のファミリー分け */
+const FAM={
+  '①経常収支比率':'fin','①収益的収支比率':'fin','②累積欠損金比率':'fin','③流動比率':'fin',
+  '⑤料金回収率':'fin','⑤経費回収率':'fin','⑥給水原価':'fin','⑥汚水処理原価':'fin',
+  '①有形固定資産減価償却率':'age','②管路経年化率':'age','②管渠老朽化率':'age',
+  '③管路更新率':'age','③管渠改善率':'age',
+  '⑦施設利用率':'ops','⑧有収率':'ops','⑧水洗化率':'ops',
+  '④企業債残高対給水収益比率':'cap','④企業債残高対事業規模比率':'cap'};
+const NKFAM={'_平均年齢':'staff','_職員1人当たり給水人口':'staff','_基準外繰入依存度':'cap'};
 
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fx=(v,d)=>(v===null||v===undefined||isNaN(v))?'—':Number(v).toFixed(d===undefined?2:d);
@@ -278,29 +378,52 @@ function eff(c){
   if(c.al!==undefined&&c.al!==null) return L2Z[String(c.al)];
   return null;
 }
-function axesOf(key){
-  const m=muni(key), es=entsOf(key), acc={urgency:[],capacity:[]};
+function compOf(key){
+  /* 事業指標を規模加重でファミリー別に集約し、①③と合わせて構成要素(0-100)を返す */
+  const m=muni(key), es=entsOf(key);
+  const fam={fin:[],age:[],ops:[],cap:[],staff:[]};
   es.forEach(e=>{
-    const w=(typeof e.sv==='number'&&e.sv>0)?e.sv:1, loc={urgency:[],capacity:[]};
-    Object.values(e.ind).forEach(c=>{const v=eff(c); if(v!==null&&c.ax) loc[c.ax].push(v);});
-    Object.values(e.nk).forEach(c=>{const v=eff(c); if(v!==null&&c.ax) loc[c.ax].push(v);});
-    ['urgency','capacity'].forEach(a=>{
-      if(loc[a].length) acc[a].push([loc[a].reduce((x,y)=>x+y,0)/loc[a].length, w]);
-    });
+    const w=(typeof e.sv==='number'&&e.sv>0)?e.sv:1, loc={fin:[],age:[],ops:[],cap:[],staff:[]};
+    Object.keys(e.ind).forEach(k=>{ const v=eff(e.ind[k]), f=FAM[k]; if(v!==null&&f) loc[f].push(v); });
+    Object.keys(e.nk).forEach(k=>{ const v=eff(e.nk[k]), f=NKFAM[k]; if(v!==null&&f) loc[f].push(v); });
+    Object.keys(loc).forEach(f=>{ if(loc[f].length) fam[f].push([loc[f].reduce((x,y)=>x+y,0)/loc[f].length,w]); });
   });
-  const g={urgency:[],capacity:[]};
-  Object.values(m.gen).forEach(c=>{const v=eff(c); if(v!==null&&c.ax) g[c.ax].push(v);});
-  function mix(a){
-    const den=acc[a].reduce((s,x)=>s+x[1],0);
-    const biz=den?acc[a].reduce((s,x)=>s+x[0]*x[1],0)/den:null;
-    const gen=g[a].length?g[a].reduce((x,y)=>x+y,0)/g[a].length:null;
-    if(biz===null) return gen; if(gen===null) return biz;
-    return biz*0.6+gen*0.4;   /* 暫定重み。定義書8章の確定後に差替 */
-  }
-  const u=mix('urgency'), c=mix('capacity');
-  return {u:u===null?null:Math.max(0,Math.min(100,50-u*20)),
-          c:c===null?null:Math.max(0,Math.min(100,50+c*20))};
+  const wm=a=>{ const d=a.reduce((s,x)=>s+x[1],0); return d?a.reduce((s,x)=>s+x[0]*x[1],0)/d:null; };
+  const gfis=[], gpop=[];
+  Object.keys(m.gen).forEach(k=>{ const c=m.gen[k], v=eff(c);
+    if(v===null||!c.ax) return;
+    if(c.ax==='capacity') gfis.push(v); else gpop.push(v); });
+  const q=QE[key]||{};
+  const urg=z=>z===null?null:Math.max(0,Math.min(100,50-z*20));   /* 良好度→切迫度 */
+  const good=z=>z===null?null:Math.max(0,Math.min(100,50+z*20));  /* 良好度→受入能力 */
+  const avg=a=>{const v=a.filter(x=>x!==null&&x!==undefined); return v.length?v.reduce((x,y)=>x+y,0)/v.length:null;};
+  /* ③制度準備: 3-1・3-2 は内部重み2倍 */
+  let iN=0,iD=0;
+  [['3-1',4,2],['3-2',3,2],['3-3',3,1],['3-7',3,1],['3-8',3,1]].forEach(it=>{
+    if(q[it[0]]!==undefined){ iN+=q[it[0]]/it[1]*100*it[2]; iD+=it[2]; } });
+  return {
+    u:{ w2_finance:urg(wm(fam.fin)), w2_aging:urg(wm(fam.age)), w2_ops:urg(wm(fam.ops)),
+        w2_staff:urg(wm(fam.staff)), w1_pop:urg(avg(gpop)),
+        w3_signal:avg([q['3-4']!==undefined?q['3-4']/3*100:null, q['3-5']!==undefined?q['3-5']/3*100:null]) },
+    c:{ w1_fiscal:good(avg(gfis)), w3_inst:iD>0?iN/iD:null,
+        w3_politics:q['3-6']!==undefined?q['3-6']/3*100:null, w2_capex:good(wm(fam.cap)) },
+    syn:avg(['4-1','4-2','4-3'].map(k=>q[k]!==undefined?q[k]/3*100:null))
+  };
 }
+function axis(comps,defw){
+  let n=0,d=0,cov=0,tot=0;
+  Object.keys(defw).forEach(k=>{ const w=defw[k].weight; tot+=w;
+    if(comps[k]!==null&&comps[k]!==undefined){ n+=comps[k]*w; d+=w; cov+=w; } });
+  return {s:d>0?n/d:null, cov:tot>0?cov/tot*100:0};
+}
+function scoreOf(key){
+  const c=compOf(key);
+  const U=axis(c.u,DEFAULT_W.urgency), C=axis(c.c,DEFAULT_W.capacity);
+  const quad=(U.s===null||C.s===null)?null:(U.s>=50?(C.s>=50?'hh':'hl'):(C.s>=50?'lh':'ll'));
+  return {u:U.s,c:C.s,uCov:U.cov,cCov:C.cov,syn:c.syn,quad,
+          prov:(U.cov<70||C.cov<70),comps:c};
+}
+function axesOf(key){ const s=scoreOf(key); return {u:s.u,c:s.c}; }
 
 /* ============================================================
    タブ描画
@@ -420,31 +543,155 @@ function renderDiag(){
 
 function renderMatrix(){
   const W=580,H=430,P=50;
-  const pts=SEL.map(k=>({m:muni(k),a:axesOf(k)})).filter(p=>p.a.u!==null&&p.a.c!==null);
+  const pts=SEL.map(k=>({m:muni(k),s:scoreOf(k)})).filter(p=>p.s.u!==null&&p.s.c!==null);
   const X=v=>P+(v/100)*(W-P*2), Y=v=>H-P-(v/100)*(H-P*2);
   const q=(x,y,t,s)=>'<text x="'+x+'" y="'+y+'" font-size="10.5" fill="#888">'+t+'</text>'
     +'<text x="'+x+'" y="'+(y+13)+'" font-size="10" fill="#B0B0B0">'+s+'</text>';
   let dots='';
-  pts.forEach(p=>{ const x=X(p.a.u), y=Y(p.a.c);
-    dots+='<circle cx="'+x+'" cy="'+y+'" r="6" fill="#333" opacity=".82"/>'
-      +'<text x="'+(x+10)+'" y="'+(y+4)+'" font-size="12" fill="#333">'+esc(p.m.muni)+'</text>'; });
-  let h='<h2>マトリクス</h2><p class="sub">横軸＝切迫度（②収支・原価・老朽化・運転効率・人員＋①人口増減率）、縦軸＝受入能力（②企業債残高・繰入依存度＋①財政指標）。事業スコアは給水人口・処理区域内人口で規模加重し、団体単位に集約しています。</p>'
+  pts.forEach(p=>{ const x=X(p.s.u), y=Y(p.s.c);
+    const r=p.s.syn===null?6:5+(p.s.syn/100)*9;   /* ④シナジー＝バブル径 */
+    dots+='<circle cx="'+x+'" cy="'+y+'" r="'+r.toFixed(1)+'" fill="#333" opacity="'+(p.s.prov?'.35':'.82')+'"'
+      +(p.s.prov?' stroke="#333" stroke-dasharray="2 2"':'')+'/>'
+      +'<text x="'+(x+r+5)+'" y="'+(y+4)+'" font-size="12" fill="#333">'+esc(p.m.muni)
+      +(p.s.prov?'<tspan font-size="9.5" fill="#A85400"> 暫定</tspan>':'')+'</text>'; });
+  let h='<h2>マトリクス</h2><p class="sub">横軸＝切迫度、縦軸＝受入能力。事業スコアは給水人口・処理区域内人口で規模加重して団体単位に集約し、①一般会計・③制度政治環境と合成します。バブル径は④当社シナジーです。</p>'
    +'<div class="mx"><svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px">'
    +'<line x1="'+P+'" y1="'+(H-P)+'" x2="'+(W-P)+'" y2="'+(H-P)+'" stroke="#D9D9D9"/>'
    +'<line x1="'+P+'" y1="'+P+'" x2="'+P+'" y2="'+(H-P)+'" stroke="#D9D9D9"/>'
    +'<line x1="'+X(50)+'" y1="'+P+'" x2="'+X(50)+'" y2="'+(H-P)+'" stroke="#EDEDED" stroke-dasharray="3 3"/>'
    +'<line x1="'+P+'" y1="'+Y(50)+'" x2="'+(W-P)+'" y2="'+Y(50)+'" stroke="#EDEDED" stroke-dasharray="3 3"/>'
-   +q(X(52),P+14,'切迫 高 × 受入 高','包括委託・コンセッション提案型')
-   +q(P+6,P+14,'切迫 低 × 受入 高','制度整備伴走型')
-   +q(X(52),H-P-22,'切迫 高 × 受入 低','関係構築・広域文脈型')
-   +q(P+6,H-P-22,'切迫 低 × 受入 低','広域連携の初期需要')
+   +q(X(52),P+14,'切迫 高 × 受入 高',QUAD.hh[0])+q(P+6,P+14,'切迫 低 × 受入 高',QUAD.lh[0])
+   +q(X(52),H-P-22,'切迫 高 × 受入 低',QUAD.hl[0])+q(P+6,H-P-22,'切迫 低 × 受入 低',QUAD.ll[0])
    +'<text x="'+(W/2)+'" y="'+(H-12)+'" font-size="11" text-anchor="middle" fill="#5F5F5F">切迫度 →</text>'
    +'<text x="14" y="'+(H/2)+'" font-size="11" text-anchor="middle" fill="#5F5F5F" transform="rotate(-90 14 '+(H/2)+')">受入能力 →</text>'
    +dots+'</svg>'
    +'<dl class="qhelp"><dt>象限は提案の「型」を示します</dt><dd>優先順位ではありません。切迫度が低い団体に提案余地がないという意味ではなく、提案の入り方が変わることを示します。</dd>'
-   +'<dt>集約のしかた</dt><dd>事業スコアを規模加重で平均し、②:①=6:4で合成しています（暫定重み。定義書8章の確定後に差し替えます）。</dd>'
-   +'<dt>③④は未反映</dt><dd>制度・政治環境と当社シナジーは第2段で接続します。</dd></dl></div>';
+   +'<dt>暫定表示</dt><dd>いずれかの軸のデータ充足が70%未満の場合、点を破線・淡色にし「暫定」と付記します。③④が未入力だと受入能力の充足は最大45%です。</dd></dl></div>';
+  /* 団体別の内訳 */
+  h+='<div class="scroll"><table><thead><tr><th class="l">団体</th><th>切迫度</th><th>受入能力</th>'
+    +'<th>④シナジー</th><th class="l">提案類型</th><th class="l">データ充足</th></tr></thead><tbody>';
+  SEL.forEach(k=>{ const m=muni(k), s=scoreOf(k);
+    const cb=v=>'<span class="covbar"><span style="width:'+v.toFixed(0)+'%"></span></span>'+v.toFixed(0)+'%';
+    h+='<tr><td class="l ind">'+esc(m.muni)+'</td>'
+      +'<td class="num">'+fx(s.u,1)+'</td><td class="num">'+fx(s.c,1)+'</td><td class="num">'+fx(s.syn,1)+'</td>'
+      +'<td class="l">'+(s.quad?'<b>'+QUAD[s.quad][0]+'</b><span class="unit">'+QUAD[s.quad][1]+'</span>':'—')
+      +(s.prov?' <span class="prov">暫定</span>':'')+'</td>'
+      +'<td class="l" style="font-size:11px">切迫 '+cb(s.uCov)+'／受入 '+cb(s.cCov)+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  /* 重み表 */
+  h+='<h3>重み（定義書8章のデフォルト）</h3><div class="scroll"><table><thead><tr><th class="l">軸</th><th class="l">構成要素</th><th>重み</th></tr></thead><tbody>';
+  ['urgency','capacity'].forEach(ax=>{
+    const nm=ax==='urgency'?'切迫度':'受入能力';
+    Object.keys(DEFAULT_W[ax]).forEach((k,i)=>{
+      h+='<tr><td class="l ind">'+(i===0?nm:'')+'</td><td class="l" style="font-size:12px">'
+        +esc(DEFAULT_W[ax][k].label)+'</td><td class="num">'+DEFAULT_W[ax][k].weight+'</td></tr>'; });
+  });
+  h+='</tbody></table></div>';
+  h+='<div class="note"><b>②人員の重みについて：</b>従前10から5へ低減しています。職員1人当たり給水人口が大きいことは体制の脆弱さと包括委託等による民間移管済みの双方を意味し得るため、単独の切迫シグナルとしての比重を下げました。②全体（70）・①（10）・③（20）の配分は変えていません。</div>';
   return h;
+}
+
+/* ---------- ③④ 定性入力（Supabase） ---------- */
+async function loadQE(){
+  if(!sb||!SEL.length) return;
+  const r=await sb.from('qualitative_inputs')
+    .select('municipality_key,item_code,level,is_deleted,created_at')
+    .in('municipality_key',SEL).order('created_at',{ascending:false});
+  QE={};
+  if(r.error||!r.data) return;
+  const seen={};
+  r.data.forEach(x=>{ if(x.is_deleted) return;
+    const t=x.municipality_key+'|'+x.item_code; if(seen[t]) return; seen[t]=1;
+    (QE[x.municipality_key]=QE[x.municipality_key]||{})[x.item_code]=x.level; });
+}
+function abadge(d){
+  let h='';
+  if(d.axis==='cap') h+='<span class="abadge">受入能力</span>';
+  if(d.axis==='urg') h+='<span class="abadge">切迫度（定性補完）</span>';
+  if(d.axis==='syn') h+='<span class="abadge">④シナジー</span>';
+  if(d.w2) h+='<span class="abadge w2">重み2倍（FY2027国費要件に直結）</span>';
+  return h;
+}
+async function renderQual(){
+  let h='<h2>③ 制度・政治環境／④ 当社シナジー 入力</h2>'
+   +'<p class="sub">定義書6・7章のアンカー選択式です。<b>根拠資料名の記録が必須</b>です（入力者判断の恣意性を抑えるため）。入力は追記専用で、同一項目の最新の非取消行が有効値になります。3-1・3-2は令和9年度の国費要件に直結するため、受入能力軸の中で重み2倍としています。</p>';
+  if(!sb||!session) return h+'<div class="note warnbox">ログインが必要です。</div>';
+  if(!SEL.length) return h+'<p class="sub">団体を選択してください。</p>';
+  if(!qualCity||SEL.indexOf(qualCity)<0) qualCity=SEL[0];
+  h+='<p class="sub">対象団体: <select id="qcity">'+SEL.map(k=>'<option value="'+esc(k)+'"'
+    +(k===qualCity?' selected':'')+'>'+esc(muni(k).muni)+'（'+esc(muni(k).pref)+'）</option>').join('')
+    +'</select> <span id="qsum" class="pool"></span></p><div id="qlist">読み込み中…</div>';
+  setTimeout(()=>{ const s=document.getElementById('qcity');
+    if(s) s.addEventListener('change',e=>{ qualCity=e.target.value; loadQual(); });
+    loadQual(); },0);
+  return h;
+}
+async function loadQual(){
+  const list=document.getElementById('qlist'); if(!list) return;
+  list.innerHTML='読み込み中…';
+  const r=await sb.from('qualitative_inputs')
+    .select('id,item_code,level,evidence,note,entered_by,is_deleted,created_at')
+    .eq('municipality_key',qualCity).order('created_at',{ascending:false});
+  if(r.error){ list.innerHTML='<div class="note warnbox">読取エラー: '+esc(r.error.message)+'</div>'; return; }
+  qualRows=r.data||[];
+  const eff={}; qualRows.forEach(x=>{ if(!x.is_deleted&&!(x.item_code in eff)) eff[x.item_code]=x; });
+  const sum=document.getElementById('qsum');
+  const filled=QUAL_DEF.filter(d=>eff[d.code]).length;
+  if(sum) sum.textContent='入力状況 '+filled+'/'+QUAL_DEF.length+'項目'
+    +(filled<QUAL_DEF.length?'（未入力はマトリクスで暫定扱い）':'');
+  let h='';
+  QUAL_DEF.forEach(d=>{
+    const cur=eff[d.code];
+    h+='<div class="qitem"><h4>'+esc(d.title)+abadge(d)+'</h4><div class="qsrc">'+esc(d.src)+'</div>';
+    h+=cur?'<div class="eff">現在の有効値 <b>'+cur.level+'点</b> <span class="pool">'
+      +String(cur.created_at).slice(0,10)+'／'+esc(cur.entered_by||'')+'／根拠: '+esc(cur.evidence)+'</span></div>'
+      :'<div class="eff none">未入力</div>';
+    d.anchors.forEach(a=>{ const lv=parseInt(a.split(':')[0],10);
+      h+='<label class="anchor'+(cur&&cur.level===lv?' cur':'')+'"><input type="radio" name="a-'+d.code
+        +'" value="'+lv+'"'+(cur&&cur.level===lv?' checked':'')+'>'+esc(a)+'</label>'; });
+    h+='<div class="qform"><input type="text" id="ev-'+d.code+'" maxlength="300" placeholder="根拠資料名（必須）">'
+      +'<input type="text" id="nt-'+d.code+'" maxlength="300" placeholder="補足メモ（任意）" style="flex:0 1 200px">'
+      +'<button data-save="'+d.code+'">保存</button><span class="msg" id="m-'+d.code+'"></span></div>';
+    const hist=qualRows.filter(x=>x.item_code===d.code);
+    if(hist.length){
+      h+='<details class="hist"><summary>入力履歴（'+hist.length+'件）</summary><div class="scroll"><table>'
+        +'<tr><th class="l">日時</th><th>点</th><th class="l">根拠</th><th class="l">メモ</th><th class="l">入力者</th><th></th></tr>';
+      hist.forEach(x=>{ h+='<tr'+(x.is_deleted?' class="del"':'')+'><td class="l">'
+        +String(x.created_at).slice(0,16).replace('T',' ')+'</td><td class="num">'+x.level+'</td>'
+        +'<td class="l">'+esc(x.evidence)+'</td><td class="l">'+esc(x.note||'')+'</td>'
+        +'<td class="l">'+esc(x.entered_by||'')+'</td><td>'
+        +(x.is_deleted?'取消済':'<button class="linklike" data-cancel="'+x.id+'">取消</button>')+'</td></tr>'; });
+      h+='</table></div></details>';
+    }
+    h+='</div>';
+  });
+  list.innerHTML=h;
+  list.querySelectorAll('button[data-save]').forEach(b=>b.addEventListener('click',()=>saveQual(b.dataset.save)));
+  list.querySelectorAll('button[data-cancel]').forEach(b=>b.addEventListener('click',()=>cancelQual(b.dataset.cancel)));
+}
+async function saveQual(code){
+  const msg=document.getElementById('m-'+code); msg.className='msg'; msg.textContent='';
+  const d=QUAL_DEF.find(x=>x.code===code);
+  const sel=document.querySelector('input[name="a-'+code+'"]:checked');
+  const ev=document.getElementById('ev-'+code).value.trim();
+  const nt=document.getElementById('nt-'+code).value.trim();
+  if(!sel){ msg.className='msg err'; msg.textContent='アンカーを選択してください'; return; }
+  const lv=parseInt(sel.value,10);
+  if(lv<0||lv>d.max){ msg.className='msg err'; msg.textContent='点数が範囲外です'; return; }
+  if(!ev){ msg.className='msg err'; msg.textContent='根拠資料名は必須です'; return; }
+  msg.textContent='保存中…';
+  const r=await sb.from('qualitative_inputs').insert({municipality_key:qualCity,item_code:code,
+    level:lv,evidence:ev,note:nt||null,entered_by:(session.user&&session.user.email)||null});
+  if(r.error){ msg.className='msg err'; msg.textContent='保存失敗: '+r.error.message; return; }
+  msg.className='msg ok'; msg.textContent='保存しました';
+  await loadQE(); loadQual();
+}
+async function cancelQual(id){
+  if(!confirm('この入力行を取消しますか？（履歴には取消済として残ります）')) return;
+  const r=await sb.from('qualitative_inputs').update({is_deleted:true}).eq('id',id);
+  if(r.error){ alert('取消失敗: '+r.error.message); return; }
+  await loadQE(); loadQual();
 }
 
 /* ---------- 決算（年鑑明細・遅延読込） ---------- */
@@ -575,6 +822,7 @@ function drawTabs(){
 }
 async function draw(){
   drawSel(); drawTabs();
+  if(sb&&session&&SEL.length) await loadQE();
   const el=document.getElementById('main');
   if(!SEL.length){ el.innerHTML='<p class="sub">県を選び、団体を選択してください。同時表示は'+MAXSEL+'団体までです。</p>'; return; }
   if(TAB==='gen') el.innerHTML=renderGen();
@@ -583,6 +831,7 @@ async function draw(){
   else if(TAB==='diag') el.innerHTML=renderDiag();
   else if(TAB==='matrix') el.innerHTML=renderMatrix();
   else if(TAB==='notes') el.innerHTML=renderNotes();
+  else if(TAB==='qual') el.innerHTML=await renderQual();
   else if(TAB==='kessan'){ el.innerHTML='<p class="sub">決算明細を読み込んでいます…</p>'; el.innerHTML=await renderKessan(); }
   else if(TAB==='ts'){ el.innerHTML='<p class="sub">時系列を読み込んでいます…</p>'; el.innerHTML=await renderTs(); }
 }
@@ -649,7 +898,9 @@ async function submit(){
 initAuth();
 /* テスト用フック */
 window.__mef={setD:d=>{D=d;},setSel:s=>{SEL=s;},setTab:t=>{TAB=t;},draw:()=>draw(),
-  axesOf:k=>axesOf(k),diverges:c=>diverges(c),bypass:()=>{session={user:{email:'test'}};route();}};
+  axesOf:k=>axesOf(k),scoreOf:k=>scoreOf(k),compOf:k=>compOf(k),diverges:c=>diverges(c),
+  setQE:q=>{QE=q;},getQE:()=>QE,W:DEFAULT_W,QUAL_DEF:QUAL_DEF,
+  bypass:()=>{session={user:{email:'test'}};route();}};
 </script>
 </body>
 </html>
